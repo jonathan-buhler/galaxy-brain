@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "galaxy-brain"
+version = "0.1.0"
+description = "A project with the aim of generating artificial galaxies and worlds"
+authors = ["Jonathan Buhler <jonathan@buhler.dev>"]
+license = "GPL-3.0-or-later"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+numpy = "^1.19.5"
+tensorflow = "^2.4.1"
+
+[tool.poetry.dev-dependencies]
+black = "^20.8b1"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
