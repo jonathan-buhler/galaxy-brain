@@ -133,9 +133,3 @@ dmypy.json
 
 # Visual Studio Code
 .vscode/
-
-# Data files
-data/
-
-# API keys
-keys.py
