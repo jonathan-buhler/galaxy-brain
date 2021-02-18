@@ -1,4 +1,3 @@
-import numpy as np
 from astroNN.datasets import galaxy10
 from PIL import Image
 
