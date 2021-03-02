@@ -8,7 +8,7 @@ def get_data():
     images, labels = galaxy10.load_data()
 
     test_image = images[0]
-    img = Image.fromarray(test_image, mode='RGB')
-    img.save('./src/out/test_image.jpg')
+    img = Image.fromarray(test_image, mode="RGB")
+    img.save("./src/out/test_image.jpg")
 
     return images, labels
