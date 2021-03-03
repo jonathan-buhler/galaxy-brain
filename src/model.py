@@ -24,6 +24,9 @@ LATENT_DIM = 100
 IMG_SHAPE = (N_CHANNELS, IMG_SIZE, IMG_SIZE)
 IMG_AREA = int(math.prod(IMG_SHAPE))
 
+CUDA = torch.cuda.is_available()
+print(f"CUDA available: {CUDA}")
+
 
 class Generator(nn.Module):
     def __init__(self):
@@ -87,14 +90,19 @@ adversarial_loss = torch.nn.MSELoss()
 generator = Generator()
 discriminator = Discriminator()
 
+if CUDA:
+    generator.cuda()
+    discriminator.cuda()
+    adversarial_loss.cuda()
+
 dataloader = DataLoader(HDG10(DATASET_PATH), batch_size=BATCH_SIZE, shuffle=True)
 
 # Optimizers
 optimizer_G = Adam(generator.parameters(), lr=LR, betas=BETAS)
 optimizer_D = Adam(discriminator.parameters(), lr=LR, betas=BETAS)
 
-FloatTensor = torch.FloatTensor
-LongTensor = torch.LongTensor
+FloatTensor = torch.cuda.FloatTensor if CUDA else torch.FloatTensor
+LongTensor = torch.cuda.LongTensor if CUDA else torch.LongTensor
 
 
 def sample_image(n_row, batches_done):
