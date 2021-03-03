@@ -51,6 +51,19 @@ numpy = [
 ]
 
 [[package]]
+name = "isort"
+version = "5.7.0"
+description = "A Python utility / library to sort Python imports."
+category = "dev"
+optional = false
+python-versions = ">=3.6,<4.0"
+
+[package.extras]
+pipfile_deprecated_finder = ["pipreqs", "requirementslib"]
+requirements_deprecated_finder = ["pipreqs", "pip-api"]
+colors = ["colorama (>=0.4.3,<0.5.0)"]
+
+[[package]]
 name = "mypy-extensions"
 version = "0.4.3"
 description = "Experimental type system extensions for programs checked with the mypy typechecker."
@@ -145,7 +158,7 @@ python-versions = "*"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "c57507e5fbaf3cfdb868d729c9ad5d9420be556da186be336190c63d3172e20f"
+content-hash = "fad9966e21dd4bf5d5c082e72123b21665884ecacbc0bf985cf83f42cf14fac4"
 
 [metadata.files]
 appdirs = [
@@ -170,6 +183,10 @@ h5py = [
     {file = "h5py-3.2.0-cp39-cp39-manylinux1_x86_64.whl", hash = "sha256:1d8e1093da333d6dd2a1d050af05a1e01a65c2711a3f3176a9cab525681b1a85"},
     {file = "h5py-3.2.0-cp39-cp39-win_amd64.whl", hash = "sha256:50f99884c3d20b469731b69f6d0a05af0f80dd80aeb0bd0fffa99022274cdc9c"},
     {file = "h5py-3.2.0.tar.gz", hash = "sha256:4271c1a4b7d87aa76fe96d016368beb05a6c389d64882d58036964ce7d2d03c1"},
+]
+isort = [
+    {file = "isort-5.7.0-py3-none-any.whl", hash = "sha256:fff4f0c04e1825522ce6949973e83110a6e907750cd92d128b0d14aaaadbffdc"},
+    {file = "isort-5.7.0.tar.gz", hash = "sha256:c729845434366216d320e936b8ad6f9d681aab72dc7cbc2d51bedc3582f3ad1e"},
 ]
 mypy-extensions = [
     {file = "mypy_extensions-0.4.3-py2.py3-none-any.whl", hash = "sha256:090fedd75945a69ae91ce1303b5824f428daf5a028d2f6ab8a299250a846f15d"},

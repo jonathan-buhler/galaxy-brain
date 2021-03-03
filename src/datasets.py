@@ -1,6 +1,6 @@
 import h5py
 import numpy as np
-from torch import Tensor
+import torch
 from torch.utils.data import Dataset
 
 DATASET_PATH = "./src/datasets/HDG10.h5"
@@ -15,8 +15,8 @@ class HDG10(Dataset):
 
         # Number of images temporarily capped at 1024 for performance reasons
         with h5py.File(path, "r") as file:
-            self.images = Tensor(np.array(file["images"][:1024]))
-            self.labels = Tensor(np.array(file["ans"][:1024]))
+            self.images = torch.tensor(np.array(file["images"]))
+            self.labels = torch.tensor(np.array(file["ans"]), dtype=torch.long)
 
     def __getitem__(self, index):
         return self.images[index], self.labels[index]

@@ -3,15 +3,14 @@ import math
 import numpy as np
 import torch
 import torch.nn as nn
-from torch.autograd import Variable
 from torch.optim import Adam
 from torch.utils.data import DataLoader
 from torchvision.utils import save_image
 
-from datasets import HDG10, DATASET_PATH
+from datasets import DATASET_PATH, HDG10
 
 N_EPOCHS = 200
-SAMPLE_INTERVAL = 400
+SAMPLE_INTERVAL = 100
 BATCH_SIZE = 64
 LR = 0.0002
 BETAS = (0.5, 0.999)
@@ -23,9 +22,6 @@ LATENT_DIM = 100
 
 IMG_SHAPE = (N_CHANNELS, IMG_SIZE, IMG_SIZE)
 IMG_AREA = int(math.prod(IMG_SHAPE))
-
-CUDA = torch.cuda.is_available()
-print(f"CUDA available: {CUDA}")
 
 
 class Generator(nn.Module):
@@ -90,28 +86,20 @@ adversarial_loss = torch.nn.MSELoss()
 generator = Generator()
 discriminator = Discriminator()
 
-if CUDA:
-    generator.cuda()
-    discriminator.cuda()
-    adversarial_loss.cuda()
-
 dataloader = DataLoader(HDG10(DATASET_PATH), batch_size=BATCH_SIZE, shuffle=True)
 
 # Optimizers
 optimizer_G = Adam(generator.parameters(), lr=LR, betas=BETAS)
 optimizer_D = Adam(discriminator.parameters(), lr=LR, betas=BETAS)
 
-FloatTensor = torch.cuda.FloatTensor if CUDA else torch.FloatTensor
-LongTensor = torch.cuda.LongTensor if CUDA else torch.LongTensor
-
 
 def sample_image(n_row, batches_done):
     """Saves a grid of generated digits ranging from 0 to n_classes"""
     # Sample noise
-    z = Variable(FloatTensor(np.random.normal(0, 1, (n_row ** 2, LATENT_DIM))))
+    z = torch.tensor(np.random.normal(0, 1, (n_row ** 2, LATENT_DIM)), dtype=torch.long)
     # Get labels ranging from 0 to n_classes for n rows
     labels = np.array([num for _ in range(n_row) for num in range(n_row)])
-    labels = Variable(LongTensor(labels))
+    labels = torch.tensor(labels, dtype=torch.long)
     gen_imgs = generator(z, labels)
     save_image(
         gen_imgs.data, f"./src/samples/{batches_done}.png", nrow=n_row, normalize=True
@@ -124,16 +112,18 @@ def sample_image(n_row, batches_done):
 
 for epoch in range(N_EPOCHS):
     for i, (imgs, labels) in enumerate(dataloader):
+        optimizer_G.zero_grad()
+        optimizer_D.zero_grad()
 
         batch_size = imgs.shape[0]
 
         # Adversarial ground truths
-        valid = Variable(FloatTensor(batch_size, 1).fill_(1.0), requires_grad=False)
-        fake = Variable(FloatTensor(batch_size, 1).fill_(0.0), requires_grad=False)
+        valid = torch.ones(batch_size, 1)
+        fake = torch.zeros(batch_size, 1)
 
         # Configure input
-        real_imgs = Variable(imgs.type(FloatTensor))
-        labels = Variable(labels.type(LongTensor))
+        # real_imgs = FloatTensor(imgs.type(FloatTensor))
+        # labels = FloatTensor(labels.type(LongTensor), requires_grad=True)
 
         # -----------------
         #  Train Generator
@@ -142,8 +132,12 @@ for epoch in range(N_EPOCHS):
         optimizer_G.zero_grad()
 
         # Sample noise and labels as generator input
-        z = Variable(FloatTensor(np.random.normal(0, 1, (batch_size, LATENT_DIM))))
-        gen_labels = Variable(LongTensor(np.random.randint(0, N_CLASSES, batch_size)))
+        z = torch.tensor(
+            np.random.normal(0, 1, (batch_size, LATENT_DIM)), dtype=torch.long
+        )
+        gen_labels = torch.tensor(
+            np.random.randint(0, N_CLASSES, batch_size), dtype=torch.long
+        )
 
         # Generate a batch of images
         gen_imgs = generator(z, gen_labels)
@@ -162,7 +156,7 @@ for epoch in range(N_EPOCHS):
         optimizer_D.zero_grad()
 
         # Loss for real images
-        validity_real = discriminator(real_imgs, labels)
+        validity_real = discriminator(imgs, labels)
         d_real_loss = adversarial_loss(validity_real, valid)
 
         # Loss for fake images
