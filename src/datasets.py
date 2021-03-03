@@ -3,6 +3,8 @@ import numpy as np
 from torch import Tensor
 from torch.utils.data import Dataset
 
+DATASET_PATH = "./src/datasets/HDG10.h5"
+
 
 class HDG10(Dataset):
     def __init__(self, path, transform=None):

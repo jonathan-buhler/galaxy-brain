@@ -136,3 +136,6 @@ dmypy.json
 
 # Datasets
 datasets/
+
+# Training samples
+samples/

@@ -1,191 +1,177 @@
+import math
+
 import numpy as np
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
+from torch.optim import Adam
+from torch.utils.data import DataLoader
+from torchvision.utils import save_image
+
+from datasets import HDG10, DATASET_PATH
 
 N_EPOCHS = 200
-N_CLASSES = 10
-LATENT_DIM = 100
-IMG_SIZE = 32
-CHANNELS = 1
+SAMPLE_INTERVAL = 400
+BATCH_SIZE = 64
 LR = 0.0002
-BETA_1 = 0.5
-BETA_2 = 0.999
+BETAS = (0.5, 0.999)
 
+N_CLASSES = 10
+N_CHANNELS = 3
+IMG_SIZE = 207
+LATENT_DIM = 100
 
-def weights_init_normal(m):
-    classname = m.__class__.__name__
-    if classname.find("Conv") != -1:
-        torch.nn.init.normal_(m.weight.data, 0.0, 0.02)
-    elif classname.find("BatchNorm2d") != -1:
-        torch.nn.init.normal_(m.weight.data, 1.0, 0.02)
-        torch.nn.init.constant_(m.bias.data, 0.0)
+IMG_SHAPE = (N_CHANNELS, IMG_SIZE, IMG_SIZE)
+IMG_AREA = int(math.prod(IMG_SHAPE))
 
 
 class Generator(nn.Module):
-    def __init__(self, n_classes, latent_dim, img_size, channels):
+    def __init__(self):
         super(Generator, self).__init__()
 
-        self.label_emb = nn.Embedding(n_classes, latent_dim)
+        self.label_emb = nn.Embedding(N_CLASSES, N_CLASSES)
 
-        # Initial size before upsampling
-        self.init_size = img_size // 4
-        self.l1 = nn.Sequential(nn.Linear(latent_dim, 128 * self.init_size ** 2))
+        def block(in_feat, out_feat, normalize=True):
+            layers = [nn.Linear(in_feat, out_feat)]
+            if normalize:
+                layers.append(nn.BatchNorm1d(out_feat, 0.8))
+            layers.append(nn.LeakyReLU(0.2, inplace=True))
+            return layers
 
-        self.conv_blocks = nn.Sequential(
-            nn.BatchNorm2d(128),
-            nn.Upsample(scale_factor=2),
-            nn.Conv2d(128, 128, 3, stride=1, padding=1),
-            nn.BatchNorm2d(128, 0.8),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Upsample(scale_factor=2),
-            nn.Conv2d(128, 64, 3, stride=1, padding=1),
-            nn.BatchNorm2d(64, 0.8),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(64, channels, 3, stride=1, padding=1),
+        self.model = nn.Sequential(
+            *block(LATENT_DIM + N_CLASSES, 128, normalize=False),
+            *block(128, 256),
+            *block(256, 512),
+            *block(512, 1024),
+            nn.Linear(1024, IMG_AREA),
             nn.Tanh(),
         )
 
     def forward(self, noise, labels):
-        gen_input = torch.mul(self.label_emb(labels), noise)
-        out = self.l1(gen_input)
-        out = out.view(out.shape[0], 128, self.init_size, self.init_size)
-        img = self.conv_blocks(out)
+        # Concatenate label embedding and image to produce input
+        gen_input = torch.cat((self.label_emb(labels), noise), -1)
+        img = self.model(gen_input)
+        img = img.view(img.size(0), *IMG_SHAPE)
         return img
 
 
 class Discriminator(nn.Module):
-    def __init__(self, n_classes, img_size, channels):
+    def __init__(self):
         super(Discriminator, self).__init__()
 
-        def discriminator_block(in_filters, out_filters, bn=True):
-            """Returns layers of each discriminator block"""
-            block = [
-                nn.Conv2d(in_filters, out_filters, 3, 2, 1),
-                nn.LeakyReLU(0.2, inplace=True),
-                nn.Dropout2d(0.25),
-            ]
-            if bn:
-                block.append(nn.BatchNorm2d(out_filters, 0.8))
-            return block
+        self.label_embedding = nn.Embedding(N_CLASSES, N_CLASSES)
 
-        self.conv_blocks = nn.Sequential(
-            *discriminator_block(channels, 16, bn=False),
-            *discriminator_block(16, 32),
-            *discriminator_block(32, 64),
-            *discriminator_block(64, 128),
+        self.model = nn.Sequential(
+            nn.Linear(N_CLASSES + IMG_AREA, 512),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Linear(512, 512),
+            nn.Dropout(0.4),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Linear(512, 512),
+            nn.Dropout(0.4),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Linear(512, 1),
         )
 
-        # The height and width of downsampled image
-        ds_size = img_size // 2 ** 4
-
-        # Output layers
-        self.adv_layer = nn.Sequential(nn.Linear(128 * ds_size ** 2, 1), nn.Sigmoid())
-        self.aux_layer = nn.Sequential(
-            nn.Linear(128 * ds_size ** 2, n_classes), nn.Softmax()
-        )
-
-    def forward(self, img):
-        out = self.conv_blocks(img)
-        out = out.view(out.shape[0], -1)
-        validity = self.adv_layer(out)
-        label = self.aux_layer(out)
-
-        return validity, label
+    def forward(self, img, labels):
+        # Concatenate label embedding and image to produce input
+        d_in = torch.cat((img.view(img.size(0), -1), self.label_embedding(labels)), -1)
+        validity = self.model(d_in)
+        return validity
 
 
 # Loss functions
-adversarial_loss = torch.nn.BCELoss()
-auxiliary_loss = torch.nn.CrossEntropyLoss()
+adversarial_loss = torch.nn.MSELoss()
 
 # Initialize generator and discriminator
 generator = Generator()
 discriminator = Discriminator()
 
-# Initialize weights
-generator.apply(weights_init_normal)
-discriminator.apply(weights_init_normal)
+dataloader = DataLoader(HDG10(DATASET_PATH), batch_size=BATCH_SIZE, shuffle=True)
 
 # Optimizers
-optimizer_G = torch.optim.Adam(generator.parameters(), lr=LR, betas=(BETA_1, BETA_2))
-optimizer_D = torch.optim.Adam(
-    discriminator.parameters(), lr=LR, betas=(BETA_1, BETA_2)
-)
+optimizer_G = Adam(generator.parameters(), lr=LR, betas=BETAS)
+optimizer_D = Adam(discriminator.parameters(), lr=LR, betas=BETAS)
 
 FloatTensor = torch.FloatTensor
 LongTensor = torch.LongTensor
 
 
+def sample_image(n_row, batches_done):
+    """Saves a grid of generated digits ranging from 0 to n_classes"""
+    # Sample noise
+    z = Variable(FloatTensor(np.random.normal(0, 1, (n_row ** 2, LATENT_DIM))))
+    # Get labels ranging from 0 to n_classes for n rows
+    labels = np.array([num for _ in range(n_row) for num in range(n_row)])
+    labels = Variable(LongTensor(labels))
+    gen_imgs = generator(z, labels)
+    save_image(
+        gen_imgs.data, f"./src/samples/{batches_done}.png", nrow=n_row, normalize=True
+    )
+
+
 # ----------
 #  Training
 # ----------
-def train(dataloader):
-    for epoch in range(N_EPOCHS):
-        for i, (imgs, labels) in enumerate(dataloader):
-            batch_size = imgs.shape[0]
 
-            # Adversarial ground truths
-            valid = Variable(FloatTensor(batch_size, 1).fill_(1.0), requires_grad=False)
-            fake = Variable(FloatTensor(batch_size, 1).fill_(0.0), requires_grad=False)
+for epoch in range(N_EPOCHS):
+    for i, (imgs, labels) in enumerate(dataloader):
 
-            # Configure input
-            real_imgs = Variable(imgs.type(FloatTensor))
-            labels = Variable(labels.type(LongTensor))
+        batch_size = imgs.shape[0]
 
-            # -----------------
-            #  Train Generator
-            # -----------------
+        # Adversarial ground truths
+        valid = Variable(FloatTensor(batch_size, 1).fill_(1.0), requires_grad=False)
+        fake = Variable(FloatTensor(batch_size, 1).fill_(0.0), requires_grad=False)
 
-            optimizer_G.zero_grad()
+        # Configure input
+        real_imgs = Variable(imgs.type(FloatTensor))
+        labels = Variable(labels.type(LongTensor))
 
-            # Sample noise and labels as generator input
-            z = Variable(FloatTensor(np.random.normal(0, 1, (batch_size, LATENT_DIM))))
-            gen_labels = Variable(
-                LongTensor(np.random.randint(0, N_CLASSES, batch_size))
-            )
+        # -----------------
+        #  Train Generator
+        # -----------------
 
-            # Generate a batch of images
-            gen_imgs = generator(z, gen_labels)
+        optimizer_G.zero_grad()
 
-            # Loss measures generator's ability to fool the discriminator
-            validity, pred_label = discriminator(gen_imgs)
-            g_loss = 0.5 * (
-                adversarial_loss(validity, valid)
-                + auxiliary_loss(pred_label, gen_labels)
-            )
+        # Sample noise and labels as generator input
+        z = Variable(FloatTensor(np.random.normal(0, 1, (batch_size, LATENT_DIM))))
+        gen_labels = Variable(LongTensor(np.random.randint(0, N_CLASSES, batch_size)))
 
-            g_loss.backward()
-            optimizer_G.step()
+        # Generate a batch of images
+        gen_imgs = generator(z, gen_labels)
 
-            # ---------------------
-            #  Train Discriminator
-            # ---------------------
+        # Loss measures generator's ability to fool the discriminator
+        validity = discriminator(gen_imgs, gen_labels)
+        g_loss = adversarial_loss(validity, valid)
 
-            optimizer_D.zero_grad()
+        g_loss.backward()
+        optimizer_G.step()
 
-            # Loss for real images
-            real_pred, real_aux = discriminator(real_imgs)
-            d_real_loss = (
-                adversarial_loss(real_pred, valid) + auxiliary_loss(real_aux, labels)
-            ) / 2
+        # ---------------------
+        #  Train Discriminator
+        # ---------------------
 
-            # Loss for fake images
-            fake_pred, fake_aux = discriminator(gen_imgs.detach())
-            d_fake_loss = (
-                adversarial_loss(fake_pred, fake) + auxiliary_loss(fake_aux, gen_labels)
-            ) / 2
+        optimizer_D.zero_grad()
 
-            # Total discriminator loss
-            d_loss = (d_real_loss + d_fake_loss) / 2
+        # Loss for real images
+        validity_real = discriminator(real_imgs, labels)
+        d_real_loss = adversarial_loss(validity_real, valid)
 
-            # Calculate discriminator accuracy
-            pred = np.concatenate(
-                [real_aux.data.cpu().numpy(), fake_aux.data.cpu().numpy()], axis=0
-            )
-            gt = np.concatenate(
-                [labels.data.cpu().numpy(), gen_labels.data.cpu().numpy()], axis=0
-            )
-            d_acc = np.mean(np.argmax(pred, axis=1) == gt)
+        # Loss for fake images
+        validity_fake = discriminator(gen_imgs.detach(), gen_labels)
+        d_fake_loss = adversarial_loss(validity_fake, fake)
 
-            d_loss.backward()
-            optimizer_D.step()
+        # Total discriminator loss
+        d_loss = (d_real_loss + d_fake_loss) / 2
+
+        d_loss.backward()
+        optimizer_D.step()
+
+        print(
+            "[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f]"
+            % (epoch, N_EPOCHS, i, len(dataloader), d_loss.item(), g_loss.item())
+        )
+
+        batches_done = epoch * len(dataloader) + i
+        if batches_done != 0 and batches_done % SAMPLE_INTERVAL == 0:
+            sample_image(n_row=10, batches_done=batches_done)
