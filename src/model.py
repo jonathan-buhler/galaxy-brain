@@ -17,10 +17,10 @@ BETAS = (0.5, 0.999)
 
 N_CLASSES = 10
 N_CHANNELS = 3
-IMG_SIZE = 207
+IMG_SIZE = 69 # 207
 LATENT_DIM = 100
 
-IMG_SHAPE = (N_CHANNELS, IMG_SIZE, IMG_SIZE)
+IMG_SHAPE = (IMG_SIZE, IMG_SIZE, N_CHANNELS)
 IMG_AREA = int(math.prod(IMG_SHAPE))
 
 
@@ -102,7 +102,7 @@ def sample_image(n_row, batches_done):
     labels = torch.tensor(labels, dtype=torch.long)
     gen_imgs = generator(z, labels)
     save_image(
-        gen_imgs.data, f"./src/samples/{batches_done}.png", nrow=n_row, normalize=True
+        gen_imgs.data, f"./src/fixed/{batches_done}.png", nrow=n_row, normalize=True
     )
 
 
@@ -112,9 +112,6 @@ def sample_image(n_row, batches_done):
 
 for epoch in range(N_EPOCHS):
     for i, (imgs, labels) in enumerate(dataloader):
-        optimizer_G.zero_grad()
-        optimizer_D.zero_grad()
-
         batch_size = imgs.shape[0]
 
         # Adversarial ground truths
@@ -128,7 +125,6 @@ for epoch in range(N_EPOCHS):
         # -----------------
         #  Train Generator
         # -----------------
-
         optimizer_G.zero_grad()
 
         # Sample noise and labels as generator input

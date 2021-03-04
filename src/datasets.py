@@ -3,7 +3,8 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 
-DATASET_PATH = "./src/datasets/HDG10.h5"
+# DATASET_PATH = "./src/datasets/HDG10.h5"
+DATASET_PATH = "./src/datasets/G10.h5"
 
 
 class HDG10(Dataset):
