@@ -5,19 +5,19 @@ import torch
 import torch.nn as nn
 from torch.optim import Adam
 from torch.utils.data import DataLoader
-from torchvision.utils import save_image
 
 from datasets import DATASET_PATH, HDG10
+from utils import sample_images
 
 N_EPOCHS = 200
-SAMPLE_INTERVAL = 100
-BATCH_SIZE = 64
+SAMPLE_INTERVAL = 500
+BATCH_SIZE = 128
 LR = 0.0002
 BETAS = (0.5, 0.999)
 
 N_CLASSES = 10
 N_CHANNELS = 3
-IMG_SIZE = 69 # 207
+IMG_SIZE = 69  # 207
 LATENT_DIM = 100
 
 IMG_SHAPE = (IMG_SIZE, IMG_SIZE, N_CHANNELS)
@@ -89,22 +89,10 @@ discriminator = Discriminator()
 dataloader = DataLoader(HDG10(DATASET_PATH), batch_size=BATCH_SIZE, shuffle=True)
 
 # Optimizers
-optimizer_G = Adam(generator.parameters(), lr=LR, betas=BETAS)
-optimizer_D = Adam(discriminator.parameters(), lr=LR, betas=BETAS)
-
-
-def sample_image(n_row, batches_done):
-    """Saves a grid of generated digits ranging from 0 to n_classes"""
-    # Sample noise
-    z = torch.tensor(np.random.normal(0, 1, (n_row ** 2, LATENT_DIM)), dtype=torch.long)
-    # Get labels ranging from 0 to n_classes for n rows
-    labels = np.array([num for _ in range(n_row) for num in range(n_row)])
-    labels = torch.tensor(labels, dtype=torch.long)
-    gen_imgs = generator(z, labels)
-    save_image(
-        gen_imgs.data, f"./src/fixed/{batches_done}.png", nrow=n_row, normalize=True
-    )
-
+# optimizer_G = Adam(generator.parameters(), lr=LR, betas=BETAS)
+# optimizer_D = Adam(discriminator.parameters(), lr=LR, betas=BETAS)
+optimizer_G = Adam(generator.parameters())
+optimizer_D = Adam(discriminator.parameters())
 
 # ----------
 #  Training
@@ -172,4 +160,10 @@ for epoch in range(N_EPOCHS):
 
         batches_done = epoch * len(dataloader) + i
         if batches_done != 0 and batches_done % SAMPLE_INTERVAL == 0:
-            sample_image(n_row=10, batches_done=batches_done)
+            sample_images(
+                generator=generator,
+                latent_dim=LATENT_DIM,
+                n_classes=N_CLASSES,
+                dir="fixed",
+                filename=batches_done,
+            )
