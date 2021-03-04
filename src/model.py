@@ -4,6 +4,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch.optim import Adam
+from torch.optim.lr_scheduler import ExponentialLR
 from torch.utils.data import DataLoader
 
 from datasets import DATASET_PATH, HDG10
@@ -12,10 +13,12 @@ from utils import sample_images
 N_EPOCHS = 200
 SAMPLE_INTERVAL = 500
 BATCH_SIZE = 128
-LR = 0.0002
+G_LR = 0.00005
+D_LR = 0.00005
+GAMMA = 0.995
 BETAS = (0.5, 0.999)
 
-N_CLASSES = 10
+N_CLASSES = 4
 N_CHANNELS = 3
 IMG_SIZE = 69  # 207
 LATENT_DIM = 100
@@ -70,6 +73,7 @@ class Discriminator(nn.Module):
             nn.Dropout(0.4),
             nn.LeakyReLU(0.2, inplace=True),
             nn.Linear(512, 1),
+            nn.Sigmoid(),
         )
 
     def forward(self, img, labels):
@@ -80,7 +84,8 @@ class Discriminator(nn.Module):
 
 
 # Loss functions
-adversarial_loss = torch.nn.MSELoss()
+# adversarial_loss = nn.MSELoss()
+adversarial_loss = nn.BCELoss()
 
 # Initialize generator and discriminator
 generator = Generator()
@@ -89,26 +94,20 @@ discriminator = Discriminator()
 dataloader = DataLoader(HDG10(DATASET_PATH), batch_size=BATCH_SIZE, shuffle=True)
 
 # Optimizers
-# optimizer_G = Adam(generator.parameters(), lr=LR, betas=BETAS)
-# optimizer_D = Adam(discriminator.parameters(), lr=LR, betas=BETAS)
-optimizer_G = Adam(generator.parameters())
-optimizer_D = Adam(discriminator.parameters())
+optimizer_G = Adam(generator.parameters(), lr=G_LR, betas=BETAS)
+optimizer_D = Adam(discriminator.parameters(), lr=D_LR, betas=BETAS)
 
-# ----------
-#  Training
-# ----------
+# scheduler_G = ExponentialLR(optimizer_G, gamma=GAMMA)
+# scheduler_D = ExponentialLR(optimizer_D, gamma=GAMMA)
+
 
 for epoch in range(N_EPOCHS):
-    for i, (imgs, labels) in enumerate(dataloader):
+    for batch, (imgs, labels) in enumerate(dataloader):
         batch_size = imgs.shape[0]
 
         # Adversarial ground truths
         valid = torch.ones(batch_size, 1)
         fake = torch.zeros(batch_size, 1)
-
-        # Configure input
-        # real_imgs = FloatTensor(imgs.type(FloatTensor))
-        # labels = FloatTensor(labels.type(LongTensor), requires_grad=True)
 
         # -----------------
         #  Train Generator
@@ -132,6 +131,7 @@ for epoch in range(N_EPOCHS):
 
         g_loss.backward()
         optimizer_G.step()
+        # scheduler_G.step()
 
         # ---------------------
         #  Train Discriminator
@@ -152,18 +152,19 @@ for epoch in range(N_EPOCHS):
 
         d_loss.backward()
         optimizer_D.step()
+        # scheduler_D.step()
 
         print(
             "[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f]"
-            % (epoch, N_EPOCHS, i, len(dataloader), d_loss.item(), g_loss.item())
+            % (epoch, N_EPOCHS, batch, len(dataloader), d_loss.item(), g_loss.item())
         )
 
-        batches_done = epoch * len(dataloader) + i
+        batches_done = epoch * len(dataloader) + batch
         if batches_done != 0 and batches_done % SAMPLE_INTERVAL == 0:
             sample_images(
                 generator=generator,
                 latent_dim=LATENT_DIM,
                 n_classes=N_CLASSES,
-                dir="fixed",
-                filename=batches_done,
+                run_name="nsched",
+                batch_count=batches_done,
             )
