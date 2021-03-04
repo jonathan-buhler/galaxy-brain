@@ -1,7 +1,7 @@
-import torch
 import numpy as np
-from torchvision.utils import save_image
+import torch
 from PIL import Image
+from torchvision.utils import save_image
 
 
 def sample_images(generator, latent_dim, n_classes, dir, filename):
@@ -17,6 +17,5 @@ def sample_images(generator, latent_dim, n_classes, dir, filename):
     img = Image.fromarray(sanity, mode="RGB")
     img.save(f"./src/{dir}/{filename}-sanity.jpg")
 
-
-    insanity = gen_imgs.detach().view(gen_imgs.size(0),3,69,69)
+    insanity = gen_imgs.detach().view(gen_imgs.size(0), 3, 69, 69)
     save_image(insanity, f"./src/{dir}/{filename}.jpg", nrow=n_classes, normalize=True)
