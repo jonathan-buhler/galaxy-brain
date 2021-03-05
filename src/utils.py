@@ -5,30 +5,21 @@ import torch
 from PIL import Image
 from torchvision.utils import save_image
 
+N_IMAGES = 64
 
-def sample_images(generator, latent_dim, n_classes, run_name, batch_count):
+
+def gen_samples(generator, latent_dim, run_name, batch_count):
     run_path = f"./src/samples/{run_name}"
 
     os.makedirs(run_path, exist_ok=True)
 
-    z = torch.tensor(
-        np.random.normal(0, 1, (n_classes ** 2, latent_dim)), dtype=torch.long
-    )
-    labels = np.array([num for _ in range(n_classes) for num in range(n_classes)])
-    labels = torch.tensor(labels, dtype=torch.long)
+    # Due to budget-cuts we are no longer using labels/classes...
+    noise = torch.randn(N_IMAGES, latent_dim, 1, 1)
+    imgs = generator(noise)
 
-    # gen_imgs = generator(z, labels)
-    fixed_noise = torch.randn(64, latent_dim, 1, 1)
-    gen_imgs = generator(fixed_noise)
-
-    sanity = gen_imgs[0].detach().numpy()
-    img = Image.fromarray(sanity, mode="RGB")
-    img.save(f"{run_path}/{batch_count}-sanity.jpg")
-
-    insanity = gen_imgs.detach()
     save_image(
-        insanity,
+        imgs,
         f"{run_path}/{batch_count}.jpg",
-        nrow=n_classes,
+        nrow=N_IMAGES // 8,
         normalize=True,
     )

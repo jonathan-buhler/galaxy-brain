@@ -130,7 +130,7 @@ import numpy as np
 # import matplotlib.animation as animation
 # from IPython.display import HTML
 from datasets import G10
-from utils import sample_images
+from utils import gen_samples
 
 # Set random seed for reproducibility
 manualSeed = 999
@@ -254,7 +254,7 @@ ngpu = 1
 #                                transforms.ToTensor(),
 #                                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
 #                            ]))
-dataset = G10(img_size=image_size)
+dataset = G10(img_size=image_size, just_spirals=True)
 # Create the dataloader
 # dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size,
 #                                          shuffle=True, num_workers=workers)
@@ -648,7 +648,7 @@ for epoch in range(num_epochs):
         
         # Check how the generator is doing by saving G's output on fixed_noise
         if (iters % 500 == 0) or ((epoch == num_epochs-1) and (i == len(dataloader)-1)):
-            sample_images(netG, latent_dim=nz, n_classes=10, run_name="nathan", batch_count=iters)
+            gen_samples(netG, latent_dim=nz, run_name="nathan", batch_count=iters)
             # with torch.no_grad():
             #     fake = netG(fixed_noise).detach().cpu()
             # img_list.append(vutils.make_grid(fake, padding=2, normalize=True))
