@@ -3,9 +3,6 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 from torchvision import transforms
-from torchvision.transforms.transforms import Resize
-from torchvision.utils import save_image
-from torch.utils.data import DataLoader
 
 DATASET_PATH = "./src/datasets/G10.h5"
 
@@ -33,9 +30,3 @@ class G10(Dataset):
 
     def __len__(self):
         return len(self.images)
-
-# dataset = G10()
-# dataloader = DataLoader(dataset, batch_size=100)
-# for (imgs, labels) in dataloader:
-#     save_image(imgs, fp="./src/ugh.jpg", nrow=10, normalize=True)
-#     break
