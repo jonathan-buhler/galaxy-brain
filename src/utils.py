@@ -1,8 +1,6 @@
 import os
 
-import numpy as np
 import torch
-from PIL import Image
 from torchvision.utils import save_image
 
 N_IMAGES = 64
