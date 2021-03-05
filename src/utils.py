@@ -17,13 +17,15 @@ def sample_images(generator, latent_dim, n_classes, run_name, batch_count):
     labels = np.array([num for _ in range(n_classes) for num in range(n_classes)])
     labels = torch.tensor(labels, dtype=torch.long)
 
-    gen_imgs = generator(z, labels)
+    # gen_imgs = generator(z, labels)
+    fixed_noise = torch.randn(64, latent_dim, 1, 1)
+    gen_imgs = generator(fixed_noise)
 
     sanity = gen_imgs[0].detach().numpy()
     img = Image.fromarray(sanity, mode="RGB")
     img.save(f"{run_path}/{batch_count}-sanity.jpg")
 
-    insanity = gen_imgs.detach().view(gen_imgs.size(0), 3, 69, 69)
+    insanity = gen_imgs.detach()
     save_image(
         insanity,
         f"{run_path}/{batch_count}.jpg",

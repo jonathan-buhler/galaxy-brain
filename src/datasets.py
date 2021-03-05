@@ -11,14 +11,13 @@ DATASET_PATH = "./src/datasets/G10.h5"
 
 
 class G10(Dataset):
-    def __init__(self):
+    def __init__(self, img_size):
         super(G10).__init__()
 
         self.transform = transforms.Compose(
             [
-                transforms.Resize((64, 64)),
+                transforms.Resize((img_size, img_size)),
                 transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-
             ]
         )
 
@@ -30,6 +29,7 @@ class G10(Dataset):
 
     def __getitem__(self, index):
         return self.transform(self.images[index]), self.labels[index]
+        # return self.transform(self.images[index])
 
     def __len__(self):
         return len(self.images)

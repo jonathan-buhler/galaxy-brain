@@ -14,7 +14,7 @@ from torchvision.utils import save_image
 
 from datasets import G10
 
-sample_path = "./src/samples/erik128"
+sample_path = "./src/samples/erik"
 
 os.makedirs(sample_path, exist_ok=True)
 
@@ -161,7 +161,7 @@ discriminator.apply(weights_init_normal)
 
 # Configure data loader
 dataloader = torch.utils.data.DataLoader(
-    G10(),
+    G10(img_size=opt.img_size),
     batch_size=opt.batch_size,
     shuffle=True,
 )
@@ -292,4 +292,4 @@ for epoch in range(opt.n_epochs):
         )
         batches_done = epoch * len(dataloader) + i
         if batches_done % opt.sample_interval == 0:
-            sample_image(n_row=10, batches_done=batches_done)
+            sample_image(n_row=opt.n_classes, batches_done=batches_done)
