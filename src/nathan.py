@@ -14,7 +14,7 @@ SEED = 1234
 random.seed(SEED)
 torch.manual_seed(SEED)
 
-RUN_NAME = "mlpee"
+RUN_NAME = "mlpoop"
 
 # Root directory for dataset
 dataroot = "data/celeba"
@@ -23,7 +23,7 @@ dataroot = "data/celeba"
 workers = 2
 
 # Batch size during training
-batch_size = 32
+batch_size = 128
 
 # Spatial size of training images. All images will be resized to this
 #   size using a transformer.
@@ -53,7 +53,7 @@ beta1 = 0.5
 # Number of GPUs available. Use 0 for CPU mode.
 ngpu = 1
 
-dataset = G10(img_size=image_size, just_spirals=True)
+dataset = G10(img_size=image_size, just_spirals=False)
 dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
 # Decide which device we want to run on
@@ -196,7 +196,7 @@ for epoch in range(num_epochs):
         output = netD(fake.detach()).view(-1)
         # Calculate D's loss on the all-fake batch
         errD_fake = criterion(output, label)
-        print(f"ACCURACY: {output == label}")
+        # print(f"ACCURACY: {output == label}")
         # Calculate the gradients for this batch
         errD_fake.backward()
         D_G_z1 = output.mean().item()
