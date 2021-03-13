@@ -60,7 +60,7 @@ dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle
 device = torch.device("cuda:0" if (torch.cuda.is_available() and ngpu > 0) else "cpu")
 
 # Plot some training images
-sample_real(dataloader=dataloader, run_name=RUN_NAME)
+sample_real(dataloader=dataloader, batch_size=batch_size, run_name=RUN_NAME)
 
 
 def weights_init(m):
