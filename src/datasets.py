@@ -1,6 +1,7 @@
 import h5py
 import numpy as np
 import torch
+import math
 from torch.utils.data import Dataset
 from torchvision import transforms
 
@@ -11,10 +12,23 @@ class G10(Dataset):
     def __init__(self, img_size, just_spirals=False):
         super(G10).__init__()
 
+        p = 0.1
+        augmentor = transforms.RandomApply([
+            transforms.RandomAffine(0, (-0.125, 0.125)),
+            transforms.RandomAffine(0, None, (0, (0.2*torch.log(2))**2)),
+            transforms.ColorJitter(),
+            transforms.RandomRotation(),
+
+        ], p)
+
         self.transform = transforms.Compose(
             [
                 transforms.Resize((img_size, img_size)),
                 transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+                transforms.RandomHorizontalFlip(p),
+                # transforms.RandomRotation(90),
+                augmentor,
+                transforms.RandomErasing(p)
             ]
         )
 

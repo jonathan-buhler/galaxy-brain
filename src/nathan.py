@@ -183,7 +183,7 @@ dataroot = "data/celeba"
 workers = 2
 
 # Batch size during training
-batch_size = 128
+batch_size = 32
 
 # Spatial size of training images. All images will be resized to this
 #   size using a transformer.
@@ -202,7 +202,7 @@ ngf = 64
 ndf = 64
 
 # Number of training epochs
-num_epochs = 15
+num_epochs = 50
 
 # Learning rate for optimizers
 lr = 0.0002
@@ -637,7 +637,7 @@ for epoch in range(num_epochs):
         optimizerG.step()
         
         # Output training stats
-        if i % 50 == 0:
+        if i % 1 == 0:
             print('[%d/%d][%d/%d]\tLoss_D: %.4f\tLoss_G: %.4f\tD(x): %.4f\tD(G(z)): %.4f / %.4f'
                   % (epoch, num_epochs, i, len(dataloader),
                      errD.item(), errG.item(), D_x, D_G_z1, D_G_z2))
@@ -647,7 +647,7 @@ for epoch in range(num_epochs):
         D_losses.append(errD.item())
         
         # Check how the generator is doing by saving G's output on fixed_noise
-        if (iters % 500 == 0) or ((epoch == num_epochs-1) and (i == len(dataloader)-1)):
+        if (iters % 80 == 0) or ((epoch == num_epochs-1) and (i == len(dataloader)-1)):
             gen_samples(netG, latent_dim=nz, run_name="nathan", batch_count=iters)
             # with torch.no_grad():
             #     fake = netG(fixed_noise).detach().cpu()
