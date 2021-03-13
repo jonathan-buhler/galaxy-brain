@@ -10,7 +10,7 @@ from torch.utils.data import dataloader
 from datasets import G10
 from utils import gen_samples, sample_real
 
-SEED = 999
+SEED = 1234
 random.seed(SEED)
 torch.manual_seed(SEED)
 
@@ -196,6 +196,7 @@ for epoch in range(num_epochs):
         output = netD(fake.detach()).view(-1)
         # Calculate D's loss on the all-fake batch
         errD_fake = criterion(output, label)
+        print(f"ACCURACY: {output == label}")
         # Calculate the gradients for this batch
         errD_fake.backward()
         D_G_z1 = output.mean().item()
