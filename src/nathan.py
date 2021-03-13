@@ -1,16 +1,20 @@
 import random
+
 import torch
 import torch.nn as nn
 import torch.nn.parallel
 import torch.optim as optim
 import torch.utils.data
 from torch.utils.data import dataloader
-from datasets import G10
-from utils import gen_samples
 
-manualSeed = 999
-random.seed(manualSeed)
-torch.manual_seed(manualSeed)
+from datasets import G10
+from utils import gen_samples, sample_real
+
+SEED = 999
+random.seed(SEED)
+torch.manual_seed(SEED)
+
+RUN_NAME = "mlpee"
 
 # Root directory for dataset
 dataroot = "data/celeba"
@@ -56,17 +60,14 @@ dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle
 device = torch.device("cuda:0" if (torch.cuda.is_available() and ngpu > 0) else "cpu")
 
 # Plot some training images
-# real_batch = next(iter(dataloader))
-# plt.figure(figsize=(8,8))
-# plt.axis("off")
-# plt.title("Training Images")
-# plt.imshow(np.transpose(vutils.make_grid(real_batch[0].to(device)[:64], padding=2, normalize=True).cpu(),(1,2,0)))
+sample_real(dataloader=dataloader, run_name=RUN_NAME)
+
 
 def weights_init(m):
     classname = m.__class__.__name__
-    if classname.find('Conv') != -1:
+    if classname.find("Conv") != -1:
         nn.init.normal_(m.weight.data, 0.0, 0.02)
-    elif classname.find('BatchNorm') != -1:
+    elif classname.find("BatchNorm") != -1:
         nn.init.normal_(m.weight.data, 1.0, 0.02)
         nn.init.constant_(m.bias.data, 0)
 
@@ -77,7 +78,7 @@ class Generator(nn.Module):
         self.ngpu = ngpu
         self.main = nn.Sequential(
             # input is Z, going into a convolution
-            nn.ConvTranspose2d( nz, ngf * 8, 4, 1, 0, bias=False),
+            nn.ConvTranspose2d(nz, ngf * 8, 4, 1, 0, bias=False),
             nn.BatchNorm2d(ngf * 8),
             nn.ReLU(True),
             # state size. (ngf*8) x 4 x 4
@@ -85,21 +86,22 @@ class Generator(nn.Module):
             nn.BatchNorm2d(ngf * 4),
             nn.ReLU(True),
             # state size. (ngf*4) x 8 x 8
-            nn.ConvTranspose2d( ngf * 4, ngf * 2, 4, 2, 1, bias=False),
+            nn.ConvTranspose2d(ngf * 4, ngf * 2, 4, 2, 1, bias=False),
             nn.BatchNorm2d(ngf * 2),
             nn.ReLU(True),
             # state size. (ngf*2) x 16 x 16
-            nn.ConvTranspose2d( ngf * 2, ngf, 4, 2, 1, bias=False),
+            nn.ConvTranspose2d(ngf * 2, ngf, 4, 2, 1, bias=False),
             nn.BatchNorm2d(ngf),
             nn.ReLU(True),
             # state size. (ngf) x 32 x 32
-            nn.ConvTranspose2d( ngf, nc, 4, 2, 1, bias=False),
+            nn.ConvTranspose2d(ngf, nc, 4, 2, 1, bias=False),
             nn.Tanh()
             # state size. (nc) x 64 x 64
         )
 
     def forward(self, input):
         return self.main(input)
+
 
 netG = Generator(ngpu).to(device)
 netG.apply(weights_init)
@@ -128,7 +130,7 @@ class Discriminator(nn.Module):
             nn.LeakyReLU(0.2, inplace=True),
             # state size. (ndf*8) x 4 x 4
             nn.Conv2d(ndf * 8, 1, 4, 1, 0, bias=False),
-            nn.Sigmoid()
+            nn.Sigmoid(),
         )
 
     def forward(self, input):
@@ -147,8 +149,8 @@ criterion = nn.BCELoss()
 fixed_noise = torch.randn(64, nz, 1, 1, device=device)
 
 # Establish convention for real and fake labels during training
-real_label = 1.
-fake_label = 0.
+real_label = 1.0
+fake_label = 0.0
 
 # Setup Adam optimizers for both G and D
 optimizerD = optim.Adam(netD.parameters(), lr=lr, betas=(beta1, 0.999))
@@ -166,7 +168,7 @@ print("Starting Training Loop...")
 for epoch in range(num_epochs):
     # For each batch in the dataloader
     for i, data in enumerate(dataloader, 0):
-        
+
         ############################
         # (1) Update D network: maximize log(D(x)) + log(1 - D(G(z)))
         ###########################
@@ -216,17 +218,29 @@ for epoch in range(num_epochs):
         D_G_z2 = output.mean().item()
         # Update G
         optimizerG.step()
-        
 
-        print('[%d/%d][%d/%d]\tLoss_D: %.4f\tLoss_G: %.4f\tD(x): %.4f\tD(G(z)): %.4f / %.4f'
-            % (epoch, num_epochs, i, len(dataloader),
-                errD.item(), errG.item(), D_x, D_G_z1, D_G_z2))
-    
+        print(
+            "[%d/%d][%d/%d]\tLoss_D: %.4f\tLoss_G: %.4f\tD(x): %.4f\tD(G(z)): %.4f / %.4f"
+            % (
+                epoch,
+                num_epochs,
+                i,
+                len(dataloader),
+                errD.item(),
+                errG.item(),
+                D_x,
+                D_G_z1,
+                D_G_z2,
+            )
+        )
+
         # Save Losses for plotting later
         G_losses.append(errG.item())
         D_losses.append(errD.item())
-        
-        if (iters % 500 == 0) or ((epoch == num_epochs-1) and (i == len(dataloader)-1)):
-            gen_samples(netG, latent_dim=nz, run_name="nathan", batch_count=iters)
+
+        if (iters % 500 == 0) or (
+            (epoch == num_epochs - 1) and (i == len(dataloader) - 1)
+        ):
+            gen_samples(netG, latent_dim=nz, run_name=RUN_NAME, batch_count=iters)
 
         iters += 1
