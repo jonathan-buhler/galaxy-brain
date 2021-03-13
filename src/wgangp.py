@@ -150,7 +150,7 @@ def compute_gradient_penalty(D, real_samples, fake_samples):
 
 batches_done = 0
 for epoch in range(opt.n_epochs):
-    for i, (imgs, _) in enumerate(dataloader):
+    for i, (imgs) in enumerate(dataloader):
 
         # Configure input
         real_imgs = Variable(imgs.type(Tensor))
@@ -204,6 +204,6 @@ for epoch in range(opt.n_epochs):
             )
 
             if batches_done % opt.sample_interval == 0:
-                save_image(fake_imgs.data[:25], "images/%d.png" % batches_done, nrow=5, normalize=True)
+                save_image(fake_imgs.data[:25], "./src/samples/wgangp/%d.png" % batches_done, nrow=5, normalize=True)
 
             batches_done += opt.n_critic
