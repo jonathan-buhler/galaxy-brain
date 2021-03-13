@@ -134,6 +134,9 @@ dmypy.json
 # Visual Studio Code
 .vscode/
 
+# JetBrains
+.ideas/
+
 # Datasets
 datasets/
 
