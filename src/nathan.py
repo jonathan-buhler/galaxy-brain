@@ -238,7 +238,7 @@ for epoch in range(num_epochs):
         G_losses.append(errG.item())
         D_losses.append(errD.item())
 
-        if (iters % 500 == 0) or (
+        if (iters % 80 == 0) or (
             (epoch == num_epochs - 1) and (i == len(dataloader) - 1)
         ):
             gen_samples(netG, latent_dim=nz, run_name=RUN_NAME, batch_count=iters)

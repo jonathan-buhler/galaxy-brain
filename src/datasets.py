@@ -14,10 +14,10 @@ class G10(Dataset):
 
         p = 0.1
         augmentor = transforms.RandomApply([
-            transforms.RandomAffine(0, (-0.125, 0.125)),
-            transforms.RandomAffine(0, None, (0, (0.2*torch.log(2))**2)),
+            transforms.RandomAffine(0, (0, 0.125)),
+            transforms.RandomAffine(0, None, (0.1, 0.6)),
             transforms.ColorJitter(),
-            transforms.RandomRotation(),
+            transforms.RandomRotation(90),
 
         ], p)
 
