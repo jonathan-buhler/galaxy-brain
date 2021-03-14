@@ -112,7 +112,7 @@ if cuda:
 #     shuffle=True,
 # )
 
-dataset = G10(img_size=opt.img_size, just_spirals=False)
+dataset = G10(img_size=opt.img_size, just_spirals=True)
 dataloader = torch.utils.data.DataLoader(dataset, batch_size=opt.batch_size, shuffle=True)
 
 # Optimizers
@@ -204,6 +204,6 @@ for epoch in range(opt.n_epochs):
             )
 
             if batches_done % opt.sample_interval == 0:
-                save_image(fake_imgs.data[:25], "./src/samples/wgangp/%d.png" % batches_done, nrow=5, normalize=True)
+                save_image(fake_imgs.data[:25], "./src/samples/wgangp2/%d.png" % batches_done, nrow=5, normalize=True)
 
             batches_done += opt.n_critic
