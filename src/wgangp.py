@@ -146,17 +146,13 @@ if cuda:
 #     shuffle=True,
 # )
 
-<<<<<<< HEAD
-dataset = G10(img_size=opt.img_size, just_spirals=True)
-dataloader = torch.utils.data.DataLoader(dataset, batch_size=opt.batch_size, shuffle=True)
-=======
+
 dataset = G10(img_size=opt.img_size, just_spirals=False)
 dataloader = torch.utils.data.DataLoader(
     dataset, batch_size=opt.batch_size, shuffle=True
 )
 
 sample_real(dataloader=dataloader, batch_size=opt.batch_size, run_name="wgangp")
->>>>>>> 82a014d160e0777875c136107a0ce059693c1bbf
 
 # Optimizers
 optimizer_G = torch.optim.Adam(
@@ -269,11 +265,6 @@ for epoch in range(opt.n_epochs):
             )
 
             if batches_done % opt.sample_interval == 0:
-<<<<<<< HEAD
-                save_image(fake_imgs.data[:25], "./src/samples/wgangp2/%d.png" % batches_done, nrow=5, normalize=True)
-
-            batches_done += opt.n_critic
-=======
                 save_image(
                     fake_imgs.data[:25],
                     "./src/samples/wgangp/%d.png" % batches_done,
@@ -282,4 +273,4 @@ for epoch in range(opt.n_epochs):
                 )
 
             batches_done += opt.n_critic
->>>>>>> 82a014d160e0777875c136107a0ce059693c1bbf
+
