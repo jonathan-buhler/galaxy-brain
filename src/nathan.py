@@ -53,11 +53,13 @@ beta1 = 0.5
 # Number of GPUs available. Use 0 for CPU mode.
 ngpu = 1
 
-dataset = G10(img_size=image_size, just_spirals=False)
-dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
-
 # Decide which device we want to run on
 device = torch.device("cuda:0" if (torch.cuda.is_available() and ngpu > 0) else "cpu")
+
+dataset = G10(img_size=image_size, just_spirals=True)
+dataloader = torch.utils.data.DataLoader(
+    dataset, batch_size=batch_size, shuffle=True
+)
 
 # Plot some training images
 sample_real(dataloader=dataloader, batch_size=batch_size, run_name=RUN_NAME)
@@ -243,7 +245,7 @@ for epoch in range(num_epochs):
         G_losses.append(errG.item())
         D_losses.append(errD.item())
 
-        if (iters % 80 == 0) or (
+        if (iters % 20 == 0) or (
             (epoch == num_epochs - 1) and (i == len(dataloader) - 1)
         ):
             gen_samples(netG, latent_dim=nz, run_name=RUN_NAME, batch_count=iters)
