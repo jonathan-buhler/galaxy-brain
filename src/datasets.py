@@ -4,6 +4,7 @@ import torch
 import math
 from torch.utils.data import Dataset
 from torchvision import transforms
+from torchvision.transforms.transforms import Grayscale
 
 DATASET_PATH = "./src/datasets/G10.h5"
 
@@ -43,10 +44,23 @@ class G10(Dataset):
                 self.images = self.images[spirals]
                 self.labels = self.labels[spirals]
 
+        p = 0.1
+        augmentor = transforms.RandomApply([
+            transforms.RandomAffine(0, (0, 0.125)),
+            transforms.RandomAffine(0, None, (0.1, 0.6)),
+            transforms.ColorJitter(),
+            transforms.RandomRotation(90),
+        ], p)
+
+
         self.transform = transforms.Compose(
             [
                 transforms.Resize((img_size, img_size)),
                 transforms.Normalize(self.mean, self.std),
+                transforms.RandomHorizontalFlip(p),
+                # transforms.RandomRotation(90),
+                augmentor,
+                transforms.RandomErasing(p)
             ]
         )
 
