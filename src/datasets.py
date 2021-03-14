@@ -5,6 +5,7 @@ from PIL import Image
 import math
 from torch.utils.data import Dataset
 from torchvision import transforms
+import torchvision
 from torchvision.transforms.transforms import Grayscale
 
 DATASET_PATH = "./src/datasets/G10.h5"
@@ -28,6 +29,7 @@ class RandomTranslateWithReflect:
         self.img_size = img_size
 
     def __call__(self, old_image):
+        old_image = transforms.F.to_pil_image(old_image)
         xtranslation, ytranslation = np.random.randint(-self.max_translation,
                                                        self.max_translation + 1,
                                                        size=2)
@@ -57,6 +59,7 @@ class RandomTranslateWithReflect:
                                     ypad - ytranslation,
                                     xpad + xsize - xtranslation,
                                     ypad + ysize - ytranslation))
+        new_image = transforms.F.to_tensor(new_image)
         return new_image
 
 
