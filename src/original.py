@@ -16,10 +16,6 @@ import torch.nn.functional as F
 import torch.autograd as autograd
 import torch
 
-from datasets import G10
-from utils import sample_real
-
-
 os.makedirs("images", exist_ok=True)
 
 parser = argparse.ArgumentParser()
@@ -50,7 +46,7 @@ parser.add_argument(
     "--latent_dim", type=int, default=100, help="dimensionality of the latent space"
 )
 parser.add_argument(
-    "--img_size", type=int, default=32, help="size of each image dimension"
+    "--img_size", type=int, default=28, help="size of each image dimension"
 )
 parser.add_argument("--channels", type=int, default=1, help="number of image channels")
 parser.add_argument(
@@ -93,7 +89,7 @@ class Generator(nn.Module):
             *block(256, 512),
             *block(512, 1024),
             nn.Linear(1024, int(np.prod(img_shape))),
-            nn.Tanh(),
+            nn.Tanh()
         )
 
     def forward(self, z):
@@ -132,31 +128,23 @@ if cuda:
     discriminator.cuda()
 
 # Configure data loader
-# os.makedirs("../../data/mnist", exist_ok=True)
-# dataloader = torch.utils.data.DataLoader(
-#     datasets.MNIST(
-#         "../../data/mnist",
-#         train=True,
-#         download=True,
-#         transform=transforms.Compose(
-#             [transforms.Resize(opt.img_size), transforms.ToTensor(), transforms.Normalize([0.5], [0.5])]
-#         ),
-#     ),
-#     batch_size=opt.batch_size,
-#     shuffle=True,
-# )
-
-<<<<<<< HEAD
-dataset = G10(img_size=opt.img_size, just_spirals=True)
-dataloader = torch.utils.data.DataLoader(dataset, batch_size=opt.batch_size, shuffle=True)
-=======
-dataset = G10(img_size=opt.img_size, just_spirals=False)
+os.makedirs("../../data/mnist", exist_ok=True)
 dataloader = torch.utils.data.DataLoader(
-    dataset, batch_size=opt.batch_size, shuffle=True
+    datasets.MNIST(
+        "../../data/mnist",
+        train=True,
+        download=True,
+        transform=transforms.Compose(
+            [
+                transforms.Resize(opt.img_size),
+                transforms.ToTensor(),
+                transforms.Normalize([0.5], [0.5]),
+            ]
+        ),
+    ),
+    batch_size=opt.batch_size,
+    shuffle=True,
 )
-
-sample_real(dataloader=dataloader, batch_size=opt.batch_size, run_name="wgangp")
->>>>>>> 82a014d160e0777875c136107a0ce059693c1bbf
 
 # Optimizers
 optimizer_G = torch.optim.Adam(
@@ -199,7 +187,7 @@ def compute_gradient_penalty(D, real_samples, fake_samples):
 
 batches_done = 0
 for epoch in range(opt.n_epochs):
-    for i, (imgs) in enumerate(dataloader):
+    for i, (imgs, _) in enumerate(dataloader):
 
         # Configure input
         real_imgs = Variable(imgs.type(Tensor))
@@ -230,9 +218,6 @@ for epoch in range(opt.n_epochs):
             + torch.mean(fake_validity)
             + lambda_gp * gradient_penalty
         )
-
-        d_acc = -torch.mean(real_validity) + torch.mean(fake_validity)
-        print(f"D_ACC: {real_validity}")
 
         d_loss.backward()
         optimizer_D.step()
@@ -269,17 +254,11 @@ for epoch in range(opt.n_epochs):
             )
 
             if batches_done % opt.sample_interval == 0:
-<<<<<<< HEAD
-                save_image(fake_imgs.data[:25], "./src/samples/wgangp2/%d.png" % batches_done, nrow=5, normalize=True)
-
-            batches_done += opt.n_critic
-=======
                 save_image(
                     fake_imgs.data[:25],
-                    "./src/samples/wgangp/%d.png" % batches_done,
+                    "images/%d.png" % batches_done,
                     nrow=5,
                     normalize=True,
                 )
 
             batches_done += opt.n_critic
->>>>>>> 82a014d160e0777875c136107a0ce059693c1bbf

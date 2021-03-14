@@ -200,7 +200,7 @@ for epoch in range(num_epochs):
         dis_accuracy = (
             torch.sum((torch.round(output) == label).int()).item() / output.size()[0]
         )
-        
+
         # Calculate the gradients for this batch
         errD_fake.backward()
         D_G_z1 = output.mean().item()

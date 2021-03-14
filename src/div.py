@@ -19,8 +19,10 @@ import torch
 from datasets import G10
 from utils import sample_real
 
+os.makedirs("./src/samples/div", exist_ok=True)
 
-os.makedirs("images", exist_ok=True)
+SEED = 1234
+torch.manual_seed(SEED)
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -93,7 +95,7 @@ class Generator(nn.Module):
             *block(256, 512),
             *block(512, 1024),
             nn.Linear(1024, int(np.prod(img_shape))),
-            nn.Tanh(),
+            nn.Tanh()
         )
 
     def forward(self, z):
@@ -120,8 +122,9 @@ class Discriminator(nn.Module):
         return validity
 
 
-# Loss weight for gradient penalty
-lambda_gp = 10
+k = 2
+p = 6
+
 
 # Initialize generator and discriminator
 generator = Generator()
@@ -132,7 +135,11 @@ if cuda:
     discriminator.cuda()
 
 # Configure data loader
-# os.makedirs("../../data/mnist", exist_ok=True)
+dataset = G10(img_size=opt.img_size, just_spirals=False)
+dataloader = torch.utils.data.DataLoader(
+    dataset, batch_size=opt.batch_size, shuffle=True
+)
+
 # dataloader = torch.utils.data.DataLoader(
 #     datasets.MNIST(
 #         "../../data/mnist",
@@ -146,17 +153,7 @@ if cuda:
 #     shuffle=True,
 # )
 
-<<<<<<< HEAD
-dataset = G10(img_size=opt.img_size, just_spirals=True)
-dataloader = torch.utils.data.DataLoader(dataset, batch_size=opt.batch_size, shuffle=True)
-=======
-dataset = G10(img_size=opt.img_size, just_spirals=False)
-dataloader = torch.utils.data.DataLoader(
-    dataset, batch_size=opt.batch_size, shuffle=True
-)
-
 sample_real(dataloader=dataloader, batch_size=opt.batch_size, run_name="wgangp")
->>>>>>> 82a014d160e0777875c136107a0ce059693c1bbf
 
 # Optimizers
 optimizer_G = torch.optim.Adam(
@@ -168,41 +165,15 @@ optimizer_D = torch.optim.Adam(
 
 Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
 
-
-def compute_gradient_penalty(D, real_samples, fake_samples):
-    """Calculates the gradient penalty loss for WGAN GP"""
-    # Random weight term for interpolation between real and fake samples
-    alpha = Tensor(np.random.random((real_samples.size(0), 1, 1, 1)))
-    # Get random interpolation between real and fake samples
-    interpolates = (alpha * real_samples + ((1 - alpha) * fake_samples)).requires_grad_(
-        True
-    )
-    d_interpolates = D(interpolates)
-    fake = Variable(Tensor(real_samples.shape[0], 1).fill_(1.0), requires_grad=False)
-    # Get gradient w.r.t. interpolates
-    gradients = autograd.grad(
-        outputs=d_interpolates,
-        inputs=interpolates,
-        grad_outputs=fake,
-        create_graph=True,
-        retain_graph=True,
-        only_inputs=True,
-    )[0]
-    gradients = gradients.view(gradients.size(0), -1)
-    gradient_penalty = ((gradients.norm(2, dim=1) - 1) ** 2).mean()
-    return gradient_penalty
-
-
 # ----------
 #  Training
 # ----------
 
 batches_done = 0
 for epoch in range(opt.n_epochs):
-    for i, (imgs) in enumerate(dataloader):
-
+    for i, imgs in enumerate(dataloader):
         # Configure input
-        real_imgs = Variable(imgs.type(Tensor))
+        real_imgs = Variable(imgs.type(Tensor), requires_grad=True)
 
         # ---------------------
         #  Train Discriminator
@@ -220,19 +191,38 @@ for epoch in range(opt.n_epochs):
         real_validity = discriminator(real_imgs)
         # Fake images
         fake_validity = discriminator(fake_imgs)
-        # Gradient penalty
-        gradient_penalty = compute_gradient_penalty(
-            discriminator, real_imgs.data, fake_imgs.data
-        )
-        # Adversarial loss
-        d_loss = (
-            -torch.mean(real_validity)
-            + torch.mean(fake_validity)
-            + lambda_gp * gradient_penalty
-        )
 
-        d_acc = -torch.mean(real_validity) + torch.mean(fake_validity)
-        print(f"D_ACC: {real_validity}")
+        # Compute W-div gradient penalty
+        real_grad_out = Variable(
+            Tensor(real_imgs.size(0), 1).fill_(1.0), requires_grad=False
+        )
+        real_grad = autograd.grad(
+            real_validity,
+            real_imgs,
+            real_grad_out,
+            create_graph=True,
+            retain_graph=True,
+            only_inputs=True,
+        )[0]
+        real_grad_norm = real_grad.view(real_grad.size(0), -1).pow(2).sum(1) ** (p / 2)
+
+        fake_grad_out = Variable(
+            Tensor(fake_imgs.size(0), 1).fill_(1.0), requires_grad=False
+        )
+        fake_grad = autograd.grad(
+            fake_validity,
+            fake_imgs,
+            fake_grad_out,
+            create_graph=True,
+            retain_graph=True,
+            only_inputs=True,
+        )[0]
+        fake_grad_norm = fake_grad.view(fake_grad.size(0), -1).pow(2).sum(1) ** (p / 2)
+
+        div_gp = torch.mean(real_grad_norm + fake_grad_norm) * k / 2
+
+        # Adversarial loss
+        d_loss = -torch.mean(real_validity) + torch.mean(fake_validity) + div_gp
 
         d_loss.backward()
         optimizer_D.step()
@@ -269,11 +259,6 @@ for epoch in range(opt.n_epochs):
             )
 
             if batches_done % opt.sample_interval == 0:
-<<<<<<< HEAD
-                save_image(fake_imgs.data[:25], "./src/samples/wgangp2/%d.png" % batches_done, nrow=5, normalize=True)
-
-            batches_done += opt.n_critic
-=======
                 save_image(
                     fake_imgs.data[:25],
                     "./src/samples/wgangp/%d.png" % batches_done,
@@ -282,4 +267,3 @@ for epoch in range(opt.n_epochs):
                 )
 
             batches_done += opt.n_critic
->>>>>>> 82a014d160e0777875c136107a0ce059693c1bbf
