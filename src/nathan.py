@@ -14,7 +14,7 @@ SEED = 1234
 random.seed(SEED)
 torch.manual_seed(SEED)
 
-RUN_NAME = "mlpoop"
+RUN_NAME = "mlpoop_nathan"
 
 # Root directory for dataset
 dataroot = "data/celeba"

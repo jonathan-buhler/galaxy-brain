@@ -1,6 +1,7 @@
 import h5py
 import numpy as np
 import torch
+from PIL import Image
 import math
 from torch.utils.data import Dataset
 from torchvision import transforms
@@ -10,6 +11,53 @@ DATASET_PATH = "./src/datasets/G10.h5"
 
 SEED = 1234
 torch.manual_seed(SEED)
+
+class RandomTranslateWithReflect:
+    '''
+    Translate image randomly
+
+    Translate vertically and horizontally by n pixels where
+    n is integer drawn uniformly independently for each axis
+    from [-max_translation, max_translation].
+
+    Fill the uncovered blank area with reflect padding.
+    '''
+
+    def __init__(self, max_translation, img_size):
+        self.max_translation = max_translation
+        self.img_size = img_size
+
+    def __call__(self, old_image):
+        xtranslation, ytranslation = np.random.randint(-self.max_translation,
+                                                       self.max_translation + 1,
+                                                       size=2)
+        xpad, ypad = abs(xtranslation), abs(ytranslation)
+        xsize, ysize = (self.img_size, self.img_size)
+
+        flipped_lr = old_image.transpose(Image.FLIP_LEFT_RIGHT)
+        flipped_tb = old_image.transpose(Image.FLIP_TOP_BOTTOM)
+        flipped_both = old_image.transpose(Image.ROTATE_180)
+
+        new_image = Image.new("RGB", (xsize + 2 * xpad, ysize + 2 * ypad))
+
+        new_image.paste(old_image, (xpad, ypad))
+
+        new_image.paste(flipped_lr, (xpad + xsize - 1, ypad))
+        new_image.paste(flipped_lr, (xpad - xsize + 1, ypad))
+
+        new_image.paste(flipped_tb, (xpad, ypad + ysize - 1))
+        new_image.paste(flipped_tb, (xpad, ypad - ysize + 1))
+
+        new_image.paste(flipped_both, (xpad - xsize + 1, ypad - ysize + 1))
+        new_image.paste(flipped_both, (xpad + xsize - 1, ypad - ysize + 1))
+        new_image.paste(flipped_both, (xpad - xsize + 1, ypad + ysize - 1))
+        new_image.paste(flipped_both, (xpad + xsize - 1, ypad + ysize - 1))
+
+        new_image = new_image.crop((xpad - xtranslation,
+                                    ypad - ytranslation,
+                                    xpad + xsize - xtranslation,
+                                    ypad + ysize - ytranslation))
+        return new_image
 
 
 class G10(Dataset):
@@ -44,11 +92,11 @@ class G10(Dataset):
                 self.images = self.images[spirals]
                 self.labels = self.labels[spirals]
 
-        p = 0.1
+        p = 0.3
         augmentor = transforms.RandomApply([
-            transforms.RandomAffine(0, (0, 0.125)),
-            transforms.RandomAffine(0, None, (0.1, 0.6)),
-            transforms.ColorJitter(),
+            transforms.RandomAffine(0, (0, 0.4)),
+            transforms.RandomAffine(0, None, (0.1, 0.8)),
+            transforms.ColorJitter(0.4, 0.4, 0.4, 0.4),
             transforms.RandomRotation(90),
         ], p)
 
@@ -56,11 +104,16 @@ class G10(Dataset):
         self.transform = transforms.Compose(
             [
                 transforms.Resize((img_size, img_size)),
-                transforms.Normalize(self.mean, self.std),
                 transforms.RandomHorizontalFlip(p),
-                # transforms.RandomRotation(90),
-                augmentor,
-                transforms.RandomErasing(p)
+                transforms.RandomApply([transforms.RandomAffine(0, (0, 0.4))], p),
+                transforms.RandomApply([transforms.RandomAffine(0, None, (0.1, 0.8))], p),
+                # -------------------------------------------------------------------
+                transforms.RandomApply([RandomTranslateWithReflect(9, img_size)], p),
+                # -------------------------------------------------------------------
+                transforms.RandomApply([transforms.ColorJitter(0.4, 0.4, 0.4, 0.4)], p),
+                transforms.RandomApply([transforms.RandomRotation(90)], p),
+                transforms.RandomErasing(p),
+                transforms.Normalize(self.mean, self.std)
             ]
         )
 
