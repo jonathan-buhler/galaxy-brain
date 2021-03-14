@@ -52,7 +52,7 @@ parser.add_argument(
 parser.add_argument(
     "--img_size", type=int, default=32, help="size of each image dimension"
 )
-parser.add_argument("--channels", type=int, default=1, help="number of image channels")
+parser.add_argument("--channels", type=int, default=3, help="number of image channels")
 parser.add_argument(
     "--n_critic",
     type=int,
@@ -227,7 +227,6 @@ for epoch in range(opt.n_epochs):
         )
 
         d_acc = -torch.mean(real_validity) + torch.mean(fake_validity)
-        print(f"D_ACC: {real_validity}")
 
         d_loss.backward()
         optimizer_D.step()
