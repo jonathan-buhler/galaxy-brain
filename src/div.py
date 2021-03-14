@@ -54,7 +54,7 @@ parser.add_argument(
 parser.add_argument(
     "--img_size", type=int, default=32, help="size of each image dimension"
 )
-parser.add_argument("--channels", type=int, default=1, help="number of image channels")
+parser.add_argument("--channels", type=int, default=3, help="number of image channels")
 parser.add_argument(
     "--n_critic",
     type=int,
@@ -261,7 +261,7 @@ for epoch in range(opt.n_epochs):
             if batches_done % opt.sample_interval == 0:
                 save_image(
                     fake_imgs.data[:25],
-                    "./src/samples/wgangp/%d.png" % batches_done,
+                    "./src/samples/div/%d.png" % batches_done,
                     nrow=5,
                     normalize=True,
                 )
