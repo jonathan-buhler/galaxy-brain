@@ -8,6 +8,7 @@ import torchvision.transforms as transforms
 from torchvision.utils import save_image
 
 from torch.utils.data import DataLoader
+
 # from torchvision import datasets
 from torch.autograd import Variable
 
@@ -21,16 +22,39 @@ from datasets import G10
 os.makedirs("images", exist_ok=True)
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--n_epochs", type=int, default=200, help="number of epochs of training")
+parser.add_argument(
+    "--n_epochs", type=int, default=200, help="number of epochs of training"
+)
 parser.add_argument("--batch_size", type=int, default=64, help="size of the batches")
 parser.add_argument("--lr", type=float, default=0.00005, help="learning rate")
-parser.add_argument("--n_cpu", type=int, default=8, help="number of cpu threads to use during batch generation")
-parser.add_argument("--latent_dim", type=int, default=100, help="dimensionality of the latent space")
-parser.add_argument("--img_size", type=int, default=32, help="size of each image dimension")
+parser.add_argument(
+    "--n_cpu",
+    type=int,
+    default=8,
+    help="number of cpu threads to use during batch generation",
+)
+parser.add_argument(
+    "--latent_dim", type=int, default=100, help="dimensionality of the latent space"
+)
+parser.add_argument(
+    "--img_size", type=int, default=32, help="size of each image dimension"
+)
 parser.add_argument("--channels", type=int, default=3, help="number of image channels")
-parser.add_argument("--n_critic", type=int, default=5, help="number of training steps for discriminator per iter")
-parser.add_argument("--clip_value", type=float, default=0.01, help="lower and upper clip value for disc. weights")
-parser.add_argument("--sample_interval", type=int, default=400, help="interval betwen image samples")
+parser.add_argument(
+    "--n_critic",
+    type=int,
+    default=5,
+    help="number of training steps for discriminator per iter",
+)
+parser.add_argument(
+    "--clip_value",
+    type=float,
+    default=0.01,
+    help="lower and upper clip value for disc. weights",
+)
+parser.add_argument(
+    "--sample_interval", type=int, default=400, help="interval betwen image samples"
+)
 opt = parser.parse_args()
 print(opt)
 
@@ -93,7 +117,9 @@ if cuda:
 
 # Configure data loader
 dataset = G10(img_size=opt.img_size, just_spirals=False)
-dataloader = torch.utils.data.DataLoader(dataset, batch_size=opt.batch_size, shuffle=True)
+dataloader = torch.utils.data.DataLoader(
+    dataset, batch_size=opt.batch_size, shuffle=True
+)
 
 # dataloader = torch.utils.data.DataLoader(
 #     datasets.MNIST(
@@ -136,7 +162,9 @@ for epoch in range(opt.n_epochs):
         # Generate a batch of images
         fake_imgs = generator(z).detach()
         # Adversarial loss
-        loss_D = -torch.mean(discriminator(real_imgs)) + torch.mean(discriminator(fake_imgs))
+        loss_D = -torch.mean(discriminator(real_imgs)) + torch.mean(
+            discriminator(fake_imgs)
+        )
 
         loss_D.backward()
         optimizer_D.step()
@@ -164,9 +192,21 @@ for epoch in range(opt.n_epochs):
 
             print(
                 "[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f]"
-                % (epoch, opt.n_epochs, batches_done % len(dataloader), len(dataloader), loss_D.item(), loss_G.item())
+                % (
+                    epoch,
+                    opt.n_epochs,
+                    batches_done % len(dataloader),
+                    len(dataloader),
+                    loss_D.item(),
+                    loss_G.item(),
+                )
             )
 
         if batches_done % opt.sample_interval == 0:
-            save_image(gen_imgs.data[:25], "./src/samples/wgan/%d.png" % batches_done, nrow=5, normalize=True)
+            save_image(
+                gen_imgs.data[:25],
+                "./src/samples/wgan/%d.png" % batches_done,
+                nrow=5,
+                normalize=True,
+            )
         batches_done += 1
