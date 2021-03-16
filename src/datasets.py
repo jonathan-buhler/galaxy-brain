@@ -91,6 +91,7 @@ class G10(Dataset):
                 # transforms.RandomApply([transforms.RandomRotation(90)], p),
                 transforms.RandomErasing(0.1),
                 transforms.Normalize(self.mean, self.std),
+                transforms.Grayscale()
             ]
         )
 
