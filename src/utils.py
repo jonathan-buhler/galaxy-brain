@@ -23,12 +23,15 @@ def gen_samples(generator, latent_dim, run_name, batch_count):
     )
 
 
-def sample_real(dataloader, batch_size, run_name):
+def sample_real(dataloader, batch_size, run_name, labled=False):
     run_path = f"./src/samples/{run_name}"
 
     os.makedirs(run_path, exist_ok=True)
-
-    imgs = next(iter(dataloader))
+    imgs = None
+    if labled:
+        imgs, _ = next(iter(dataloader))
+    else:
+        imgs = next(iter(dataloader))
 
     save_image(
         imgs,
