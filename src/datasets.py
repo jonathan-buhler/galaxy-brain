@@ -90,8 +90,7 @@ class G10(Dataset):
                 # transforms.RandomApply([transforms.ColorJitter(0.4, 0.4, 0.4, 0.4)], p),
                 # transforms.RandomApply([transforms.RandomRotation(90)], p),
                 transforms.RandomErasing(0.1),
-                transforms.Normalize(self.mean, self.std),
-                transforms.Grayscale()
+                transforms.Normalize(self.mean, self.std)
             ]
         )
 
