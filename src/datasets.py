@@ -64,8 +64,10 @@ class RandomTranslateWithReflect:
 
 
 class G10(Dataset):
-    def __init__(self, img_size, just_spirals=False):
+    def __init__(self, img_size, no_classes=True, just_spirals=False):
         super(G10).__init__()
+
+        self.no_classes = no_classes
 
         with h5py.File(DATASET_PATH, "r") as file:
             self.images = torch.tensor(np.array(file["images"]), dtype=torch.float)
@@ -121,8 +123,11 @@ class G10(Dataset):
         )
 
     def __getitem__(self, index):
-        # return self.transform(self.images[index]), self.labels[index]
-        return self.transform(self.images[index])
+        if self.no_classes:
+            return self.transform(self.images[index])
+        else:
+            return self.transform(self.images[index]), self.labels[index]
+
 
     def __len__(self):
         return len(self.images)
