@@ -18,7 +18,7 @@ IMG_SIZE = 64
 LR = 0.0002
 BETAS = (0.5, 0.999)
 
-SAMPLE_INTERVAL = 400
+SAMPLE_INTERVAL = 20
 DIR = "rev-ganaxy"
 DIR_PATH = f"./src/samples/{DIR}"
 os.makedirs(DIR_PATH, exist_ok=True)
@@ -41,7 +41,7 @@ if CUDA:
 # discriminator.apply(weights_init_normal)
 
 # Configure data loader
-dataset = G10(img_size=IMG_SIZE)
+dataset = G10(img_size=IMG_SIZE, just_spirals=True)
 
 dataloader = torch.utils.data.DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True)
 
