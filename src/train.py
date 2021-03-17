@@ -25,6 +25,13 @@ os.makedirs(DIR_PATH, exist_ok=True)
 
 CUDA = True if torch.cuda.is_available() else False
 
+def weights_init_normal(m):
+    classname = m.__class__.__name__
+    if classname.find("Conv") != -1:
+        torch.nn.init.normal_(m.weight.data, 0.0, 0.02)
+    elif classname.find("BatchNorm2d") != -1:
+        torch.nn.init.normal_(m.weight.data, 1.0, 0.02)
+        torch.nn.init.constant_(m.bias.data, 0.0)
 
 generator = Generator_Stage1()
 discriminator = Discriminator_Stage1()
@@ -37,8 +44,8 @@ if CUDA:
     adversarial_loss.cuda()
 
 # Initialize weights
-# generator.apply(weights_init_normal)
-# discriminator.apply(weights_init_normal)
+generator.apply(weights_init_normal)
+discriminator.apply(weights_init_normal)
 
 # Configure data loader
 dataset = G10(img_size=IMG_SIZE, just_spirals=True)
@@ -62,8 +69,8 @@ for epoch in range(N_EPOCHS):
         # Adversarial ground truths
         # valid = Variable(Tensor(imgs.shape[0], 1).fill_(1.0), requires_grad=False)
         # fake = Variable(Tensor(imgs.shape[0], 1).fill_(0.0), requires_grad=False)
-        valid = torch.ones(BATCH_SIZE)
-        fake = torch.zeros(BATCH_SIZE)
+        valid = torch.ones(imgs.shape[0])
+        fake = torch.zeros(imgs.shape[0])
 
         # Configure input
         real_imgs = Variable(imgs.type(Tensor))
@@ -76,7 +83,7 @@ for epoch in range(N_EPOCHS):
 
         # Sample noise as generator input
         # z = Variable(Tensor(np.random.normal(0, 1, (imgs.shape[0], LATENT_DIM))))
-        z = Variable(torch.randn(BATCH_SIZE, LATENT_DIM, 1, 1))
+        z = Variable(torch.randn(imgs.shape[0], LATENT_DIM, 1, 1))
 
         # Generate a batch of images
         gen_imgs = generator(z)
