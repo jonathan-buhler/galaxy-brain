@@ -117,6 +117,7 @@ for epoch in range(N_EPOCHS):
 
         batches_done = epoch * len(dataloader) + i
         if batches_done % SAMPLE_INTERVAL == 0:
+            print(f"Saving 25 samples from {gen_imgs.data.shape[0]}")
             save_image(
                 gen_imgs.data[:25],
                 f"{DIR_PATH}/{batches_done}.jpg",
