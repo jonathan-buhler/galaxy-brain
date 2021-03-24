@@ -15,6 +15,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.autograd as autograd
 import torch
+import pytorch_fid_wrapper as pfw
+
+import matplotlib.pyplot as plt
+import numpy as np
 
 from old_datasets import G10
 from utils import sample_real
@@ -193,7 +197,15 @@ def compute_gradient_penalty(D, real_samples, fake_samples):
 # ----------
 
 batches_done = 0
+G_losses = []
+D_losses = []
+FID_log = []
 for epoch in range(opt.n_epochs):
+    epoch_G_loss = []
+    epoch_D_loss = []
+    epoch_FID_log = []
+    j = 0
+    val_fid = 0
     for i, (imgs) in enumerate(dataloader):
 
         # Configure input
@@ -261,7 +273,13 @@ for epoch in range(opt.n_epochs):
                     g_loss.item(),
                 )
             )
+            if j % 5 == 0:
+                val_fid = pfw.fid(fake_imgs, real_imgs)
+            j += 1
 
+            epoch_G_loss.append(g_loss.item())
+            epoch_D_loss.append(d_loss.item())
+            epoch_FID_log.append(val_fid)
             if batches_done % opt.sample_interval == 0:
                 save_image(
                     fake_imgs.data[:25],
@@ -271,3 +289,12 @@ for epoch in range(opt.n_epochs):
                 )
 
             batches_done += opt.n_critic
+    G_losses.append(sum(epoch_G_loss) / len(epoch_G_loss))
+    D_losses.append(sum(epoch_D_loss) / len(epoch_D_loss))
+    FID_log.append(sum(epoch_FID_log)/len(epoch_FID_log))
+plt.plot(np.linspace(1, opt.n_epochs, opt.n_epochs).astype(int), G_losses)
+plt.savefig("./plots/wgan_G")
+plt.plot(np.linspace(1, opt.n_epochs, opt.n_epochs).astype(int), D_losses)
+plt.savefig("./plots/wgan_D")
+plt.plot(np.linspace(1, opt.n_epochs, opt.n_epochs).astype(int), FID_log)
+plt.savefig("./plots/wgan_FID")

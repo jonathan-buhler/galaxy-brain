@@ -1,6 +1,5 @@
 import argparse
 import os
-import numpy as np
 import math
 import sys
 
@@ -15,6 +14,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.autograd as autograd
 import torch
+import pytorch_fid_wrapper as pfw
+
+import matplotlib.pyplot as plt
+import numpy as np
 
 from datasets import G10
 from utils import sample_real
@@ -170,7 +173,15 @@ Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
 # ----------
 
 batches_done = 0
+FID_log = []
+G_losses = []
+D_losses = []
 for epoch in range(opt.n_epochs):
+    epoch_FID_log = []
+    epoch_G_losses = []
+    epoch_D_losses = []
+    j = 0
+    val_fid = 0
     for i, imgs in enumerate(dataloader):
         # Configure input
         real_imgs = Variable(imgs.type(Tensor), requires_grad=True)
@@ -257,6 +268,14 @@ for epoch in range(opt.n_epochs):
                     g_loss.item(),
                 )
             )
+            if j % 5 == 0:
+                val_fid = pfw.fid(fake_imgs, real_imgs)
+
+            j += 1
+
+            epoch_FID_log.append(val_fid)
+            epoch_G_losses.append(g_loss.item())
+            epoch_D_losses.append(d_loss.item())
 
             if batches_done % opt.sample_interval == 0:
                 save_image(
@@ -267,3 +286,13 @@ for epoch in range(opt.n_epochs):
                 )
 
             batches_done += opt.n_critic
+    G_losses.append(sum(epoch_G_losses) / len(epoch_G_losses))
+    D_losses.append(sum(epoch_D_losses) / len(epoch_D_losses))
+    FID_log.append(sum(epoch_FID_log)/len(epoch_FID_log))
+
+plt.plot(np.linspace(1, opt.n_epochs, opt.n_epochs).astype(int), G_losses)
+plt.savefig("./plots/div_G")
+plt.plot(np.linspace(1, opt.n_epochs, opt.n_epochs).astype(int), D_losses)
+plt.savefig("./plots/div_D")
+plt.plot(np.linspace(1, opt.n_epochs, opt.n_epochs).astype(int), FID_log)
+plt.savefig("./plots/div_FID")

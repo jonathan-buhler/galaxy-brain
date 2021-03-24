@@ -8,6 +8,9 @@ import torch.utils.data
 import pytorch_fid_wrapper as pfw
 from torch.utils.data import dataloader
 
+import matplotlib.pyplot as plt
+import numpy as np
+
 from datasets import G10
 from utils import gen_samples, sample_real
 
@@ -43,7 +46,7 @@ ngf = 64
 ndf = 64
 
 # Number of training epochs
-num_epochs = 50
+num_epochs = 20
 
 # Learning rate for optimizers
 lr = 0.0002
@@ -168,11 +171,16 @@ iters = 0
 
 print("Starting Training Loop...")
 # For each epoch
+FID_log = []
+# D_loss = []
+# G_loss = []
 for epoch in range(num_epochs):
     # For each batch in the dataloader
-    FID_log = []
-    D_loss = []
-    G_loss = []
+    epoch_FID_log = []
+    epoch_D_loss = []
+    epoch_G_loss = []
+    j = 0
+    val_fid = 0
     for i, data in enumerate(dataloader, 0):
 
         ############################
@@ -231,7 +239,11 @@ for epoch in range(num_epochs):
         optimizerG.step()
 
         # real_m, real_s = pfw.get_stats(real_cpu)
-        val_fid = pfw.fid(fake_images=fake, real_images=real_cpu)
+
+        if j % 5 == 0:
+
+            val_fid = pfw.fid(fake_images=fake, real_images=real_cpu)
+        j += 1
 
         print(
             "[%d/%d][%d/%d]\tLoss_D: %.4f\tLoss_G: %.4f\tD(x): %.4f\tD(G(z)): %.4f / %.4f FID: %.4f"
@@ -250,8 +262,9 @@ for epoch in range(num_epochs):
         )
 
         # Save Losses for plotting later
-        G_losses.append(errG.item())
-        D_losses.append(errD.item())
+        epoch_G_loss.append(errG.item())
+        epoch_D_loss.append(errD.item())
+        epoch_FID_log.append(val_fid)
 
         if (iters % 20 == 0) or (
             (epoch == num_epochs - 1) and (i == len(dataloader) - 1)
@@ -259,3 +272,12 @@ for epoch in range(num_epochs):
             gen_samples(netG, latent_dim=nz, run_name=RUN_NAME, batch_count=iters)
 
         iters += 1
+    G_losses.append(sum(epoch_G_loss)/len(epoch_G_loss))
+    D_losses.append(sum(epoch_D_loss)/len(epoch_D_loss))
+    FID_log.append(sum(epoch_FID_log)/len(epoch_FID_log))
+plt.plot(np.linspace(1, num_epochs, num_epochs).astype(int), G_losses)
+plt.savefig("./plots/nathan_G")
+plt.plot(np.linspace(1, num_epochs, num_epochs).astype(int), D_losses)
+plt.savefig("./plots/nathan_D")
+plt.plot(np.linspace(1, num_epochs, num_epochs).astype(int), FID_log)
+plt.savefig("./plots/nathan_FID")
