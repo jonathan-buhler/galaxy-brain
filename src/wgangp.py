@@ -16,7 +16,7 @@ import torch.nn.functional as F
 import torch.autograd as autograd
 import torch
 
-from datasets import G10
+from old_datasets import G10
 from utils import sample_real
 
 os.makedirs("images", exist_ok=True)

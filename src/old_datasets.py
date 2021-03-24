@@ -70,25 +70,25 @@ class G10(Dataset):
             self.images[2, :, :, :].std(),
         )
 
-        # p = 0.3
-        # augmentor = transforms.RandomApply([
-        #     transforms.RandomAffine(0, (0, 0.4)),
-        #     transforms.RandomAffine(0, None, (0.1, 0.8)),
-        #     transforms.ColorJitter(0.4, 0.4, 0.4, 0.4),
-        #     transforms.RandomRotation(90),
-        # ], p)
+        p = 0.3
+        augmentor = transforms.RandomApply([
+            transforms.RandomAffine(0, (0, 0.4)),
+            transforms.RandomAffine(0, None, (0.1, 0.8)),
+            transforms.ColorJitter(0.4, 0.4, 0.4, 0.4),
+            transforms.RandomRotation(90),
+        ], p)
 
         self.transform = transforms.Compose(
             [
                 transforms.Resize((img_size, img_size)),
-                # transforms.RandomHorizontalFlip(p),
-                # transforms.RandomApply([transforms.RandomAffine(0, (0, 0.4))], p),
-                # transforms.RandomApply([transforms.RandomAffine(0, None, (0.1, 0.8))], p),
+                transforms.RandomHorizontalFlip(p),
+                transforms.RandomApply([transforms.RandomAffine(0, (0, 0.4))], p),
+                transforms.RandomApply([transforms.RandomAffine(0, None, (0.1, 0.8))], p),
                 # -------------------------------------------------------------------
-                # transforms.RandomApply([RandomTranslateWithReflect(9, img_size)], p),
+                transforms.RandomApply([RandomTranslateWithReflect(9, img_size)], p),
                 # -------------------------------------------------------------------
-                # transforms.RandomApply([transforms.ColorJitter(0.4, 0.4, 0.4, 0.4)], p),
-                # transforms.RandomApply([transforms.RandomRotation(90)], p),
+                transforms.RandomApply([transforms.ColorJitter(0.4, 0.4, 0.4, 0.4)], p),
+                transforms.RandomApply([transforms.RandomRotation(90)], p),
                 transforms.RandomErasing(0.1),
                 transforms.Normalize(self.mean, self.std)
             ]
@@ -104,51 +104,51 @@ class G10(Dataset):
         return len(self.images)
 
 
-# class RandomTranslateWithReflect:
-#     '''
-#     Translate image randomly
+class RandomTranslateWithReflect:
+    '''
+    Translate image randomly
 
-#     Translate vertically and horizontally by n pixels where
-#     n is integer drawn uniformly independently for each axis
-#     from [-max_translation, max_translation].
+    Translate vertically and horizontally by n pixels where
+    n is integer drawn uniformly independently for each axis
+    from [-max_translation, max_translation].
 
-#     Fill the uncovered blank area with reflect padding.
-#     '''
+    Fill the uncovered blank area with reflect padding.
+    '''
 
-#     def __init__(self, max_translation, img_size):
-#         self.max_translation = max_translation
-#         self.img_size = img_size
+    def __init__(self, max_translation, img_size):
+        self.max_translation = max_translation
+        self.img_size = img_size
 
-#     def __call__(self, old_image):
-#         old_image = transforms.F.to_pil_image(old_image)
-#         xtranslation, ytranslation = np.random.randint(-self.max_translation,
-#                                                        self.max_translation + 1,
-#                                                        size=2)
-#         xpad, ypad = abs(xtranslation), abs(ytranslation)
-#         xsize, ysize = (self.img_size, self.img_size)
+    def __call__(self, old_image):
+        old_image = transforms.F.to_pil_image(old_image)
+        xtranslation, ytranslation = np.random.randint(-self.max_translation,
+                                                       self.max_translation + 1,
+                                                       size=2)
+        xpad, ypad = abs(xtranslation), abs(ytranslation)
+        xsize, ysize = (self.img_size, self.img_size)
 
-#         flipped_lr = old_image.transpose(Image.FLIP_LEFT_RIGHT)
-#         flipped_tb = old_image.transpose(Image.FLIP_TOP_BOTTOM)
-#         flipped_both = old_image.transpose(Image.ROTATE_180)
+        flipped_lr = old_image.transpose(Image.FLIP_LEFT_RIGHT)
+        flipped_tb = old_image.transpose(Image.FLIP_TOP_BOTTOM)
+        flipped_both = old_image.transpose(Image.ROTATE_180)
 
-#         new_image = Image.new("RGB", (xsize + 2 * xpad, ysize + 2 * ypad))
+        new_image = Image.new("RGB", (xsize + 2 * xpad, ysize + 2 * ypad))
 
-#         new_image.paste(old_image, (xpad, ypad))
+        new_image.paste(old_image, (xpad, ypad))
 
-#         new_image.paste(flipped_lr, (xpad + xsize - 1, ypad))
-#         new_image.paste(flipped_lr, (xpad - xsize + 1, ypad))
+        new_image.paste(flipped_lr, (xpad + xsize - 1, ypad))
+        new_image.paste(flipped_lr, (xpad - xsize + 1, ypad))
 
-#         new_image.paste(flipped_tb, (xpad, ypad + ysize - 1))
-#         new_image.paste(flipped_tb, (xpad, ypad - ysize + 1))
+        new_image.paste(flipped_tb, (xpad, ypad + ysize - 1))
+        new_image.paste(flipped_tb, (xpad, ypad - ysize + 1))
 
-#         new_image.paste(flipped_both, (xpad - xsize + 1, ypad - ysize + 1))
-#         new_image.paste(flipped_both, (xpad + xsize - 1, ypad - ysize + 1))
-#         new_image.paste(flipped_both, (xpad - xsize + 1, ypad + ysize - 1))
-#         new_image.paste(flipped_both, (xpad + xsize - 1, ypad + ysize - 1))
+        new_image.paste(flipped_both, (xpad - xsize + 1, ypad - ysize + 1))
+        new_image.paste(flipped_both, (xpad + xsize - 1, ypad - ysize + 1))
+        new_image.paste(flipped_both, (xpad - xsize + 1, ypad + ysize - 1))
+        new_image.paste(flipped_both, (xpad + xsize - 1, ypad + ysize - 1))
 
-#         new_image = new_image.crop((xpad - xtranslation,
-#                                     ypad - ytranslation,
-#                                     xpad + xsize - xtranslation,
-#                                     ypad + ysize - ytranslation))
-#         new_image = transforms.F.to_tensor(new_image)
-#         return new_image
+        new_image = new_image.crop((xpad - xtranslation,
+                                    ypad - ytranslation,
+                                    xpad + xsize - xtranslation,
+                                    ypad + ysize - ytranslation))
+        new_image = transforms.F.to_tensor(new_image)
+        return new_image

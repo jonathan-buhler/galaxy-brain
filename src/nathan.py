@@ -5,6 +5,7 @@ import torch.nn as nn
 import torch.nn.parallel
 import torch.optim as optim
 import torch.utils.data
+import pytorch_fid_wrapper as pfw
 from torch.utils.data import dataloader
 
 from datasets import G10
@@ -51,7 +52,7 @@ lr = 0.0002
 beta1 = 0.5
 
 # Number of GPUs available. Use 0 for CPU mode.
-ngpu = 1
+ngpu = 0
 
 # Decide which device we want to run on
 device = torch.device("cuda:0" if (torch.cuda.is_available() and ngpu > 0) else "cpu")
@@ -169,6 +170,9 @@ print("Starting Training Loop...")
 # For each epoch
 for epoch in range(num_epochs):
     # For each batch in the dataloader
+    FID_log = []
+    D_loss = []
+    G_loss = []
     for i, data in enumerate(dataloader, 0):
 
         ############################
@@ -226,8 +230,11 @@ for epoch in range(num_epochs):
         # Update G
         optimizerG.step()
 
+        # real_m, real_s = pfw.get_stats(real_cpu)
+        val_fid = pfw.fid(fake_images=fake, real_images=real_cpu)
+
         print(
-            "[%d/%d][%d/%d]\tLoss_D: %.4f\tLoss_G: %.4f\tD(x): %.4f\tD(G(z)): %.4f / %.4f"
+            "[%d/%d][%d/%d]\tLoss_D: %.4f\tLoss_G: %.4f\tD(x): %.4f\tD(G(z)): %.4f / %.4f FID: %.4f"
             % (
                 epoch,
                 num_epochs,
@@ -238,6 +245,7 @@ for epoch in range(num_epochs):
                 D_x,
                 D_G_z1,
                 D_G_z2,
+                val_fid
             )
         )
 
