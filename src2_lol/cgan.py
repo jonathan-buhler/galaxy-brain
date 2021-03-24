@@ -14,8 +14,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch
 
-DIR_PATH = "./src2_lol/samples/gan"
-MODEL_NAME = "GAN"
+DIR_PATH = "./src2_lol/samples/cgan"
+MODEL_NAME = "CGAN"
 os.makedirs(DIR_PATH, exist_ok=True)
 
 parser = argparse.ArgumentParser()
@@ -26,9 +26,10 @@ parser.add_argument("--b1", type=float, default=0.5, help="adam: decay of first 
 parser.add_argument("--b2", type=float, default=0.999, help="adam: decay of first order momentum of gradient")
 parser.add_argument("--n_cpu", type=int, default=8, help="number of cpu threads to use during batch generation")
 parser.add_argument("--latent_dim", type=int, default=100, help="dimensionality of the latent space")
-parser.add_argument("--img_size", type=int, default=28, help="size of each image dimension")
+parser.add_argument("--n_classes", type=int, default=10, help="number of classes for dataset")
+parser.add_argument("--img_size", type=int, default=32, help="size of each image dimension")
 parser.add_argument("--channels", type=int, default=3, help="number of image channels")
-parser.add_argument("--sample_interval", type=int, default=400, help="interval betwen image samples")
+parser.add_argument("--sample_interval", type=int, default=400, help="interval between image sampling")
 opt = parser.parse_args()
 print(opt)
 
@@ -41,6 +42,8 @@ class Generator(nn.Module):
     def __init__(self):
         super(Generator, self).__init__()
 
+        self.label_emb = nn.Embedding(opt.n_classes, opt.n_classes)
+
         def block(in_feat, out_feat, normalize=True):
             layers = [nn.Linear(in_feat, out_feat)]
             if normalize:
@@ -49,7 +52,7 @@ class Generator(nn.Module):
             return layers
 
         self.model = nn.Sequential(
-            *block(opt.latent_dim, 128, normalize=False),
+            *block(opt.latent_dim + opt.n_classes, 128, normalize=False),
             *block(128, 256),
             *block(256, 512),
             *block(512, 1024),
@@ -57,8 +60,10 @@ class Generator(nn.Module):
             nn.Tanh()
         )
 
-    def forward(self, z):
-        img = self.model(z)
+    def forward(self, noise, labels):
+        # Concatenate label embedding and image to produce input
+        gen_input = torch.cat((self.label_emb(labels), noise), -1)
+        img = self.model(gen_input)
         img = img.view(img.size(0), *img_shape)
         return img
 
@@ -67,24 +72,29 @@ class Discriminator(nn.Module):
     def __init__(self):
         super(Discriminator, self).__init__()
 
+        self.label_embedding = nn.Embedding(opt.n_classes, opt.n_classes)
+
         self.model = nn.Sequential(
-            nn.Linear(int(np.prod(img_shape)), 512),
+            nn.Linear(opt.n_classes + int(np.prod(img_shape)), 512),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Linear(512, 256),
+            nn.Linear(512, 512),
+            nn.Dropout(0.4),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Linear(256, 1),
-            nn.Sigmoid(),
+            nn.Linear(512, 512),
+            nn.Dropout(0.4),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Linear(512, 1),
         )
 
-    def forward(self, img):
-        img_flat = img.view(img.size(0), -1)
-        validity = self.model(img_flat)
-
+    def forward(self, img, labels):
+        # Concatenate label embedding and image to produce input
+        d_in = torch.cat((img.view(img.size(0), -1), self.label_embedding(labels)), -1)
+        validity = self.model(d_in)
         return validity
 
 
-# Loss function
-adversarial_loss = torch.nn.BCELoss()
+# Loss functions
+adversarial_loss = torch.nn.MSELoss()
 
 # Initialize generator and discriminator
 generator = Generator()
@@ -95,6 +105,7 @@ if cuda:
     discriminator.cuda()
     adversarial_loss.cuda()
 
+# Configure data loader
 # Configure data loader
 from datasets import G10
 dataset = G10(img_size=opt.img_size, use_labels=True)
@@ -109,11 +120,25 @@ sample_real(dataloader=dataloader, batch_size=opt.batch_size, save_path=DIR_PATH
 g_losses_per_epoch = []
 d_losses_per_epoch = []
 
+
 # Optimizers
 optimizer_G = torch.optim.Adam(generator.parameters(), lr=opt.lr, betas=(opt.b1, opt.b2))
 optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=opt.lr, betas=(opt.b1, opt.b2))
 
-Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
+FloatTensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
+LongTensor = torch.cuda.LongTensor if cuda else torch.LongTensor
+
+
+def sample_image(n_row, batches_done):
+    """Saves a grid of generated digits ranging from 0 to n_classes"""
+    # Sample noise
+    z = Variable(FloatTensor(np.random.normal(0, 1, (n_row ** 2, opt.latent_dim))))
+    # Get labels ranging from 0 to n_classes for n rows
+    labels = np.array([num for _ in range(n_row) for num in range(n_row)])
+    labels = Variable(LongTensor(labels))
+    gen_imgs = generator(z, labels)
+    save_image(gen_imgs.data, f"{DIR_PATH}/{batches_done}.jpg", nrow=n_row, normalize=True)
+
 
 # ----------
 #  Training
@@ -122,14 +147,17 @@ Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
 for epoch in range(opt.n_epochs):
     g_losses = []
     d_losses = []
-    for i, (imgs, _) in enumerate(dataloader):
+    for i, (imgs, labels) in enumerate(dataloader):
+
+        batch_size = imgs.shape[0]
 
         # Adversarial ground truths
-        valid = Variable(Tensor(imgs.size(0), 1).fill_(1.0), requires_grad=False)
-        fake = Variable(Tensor(imgs.size(0), 1).fill_(0.0), requires_grad=False)
+        valid = Variable(FloatTensor(batch_size, 1).fill_(1.0), requires_grad=False)
+        fake = Variable(FloatTensor(batch_size, 1).fill_(0.0), requires_grad=False)
 
         # Configure input
-        real_imgs = Variable(imgs.type(Tensor))
+        real_imgs = Variable(imgs.type(FloatTensor))
+        labels = Variable(labels.type(LongTensor))
 
         # -----------------
         #  Train Generator
@@ -137,14 +165,16 @@ for epoch in range(opt.n_epochs):
 
         optimizer_G.zero_grad()
 
-        # Sample noise as generator input
-        z = Variable(Tensor(np.random.normal(0, 1, (imgs.shape[0], opt.latent_dim))))
+        # Sample noise and labels as generator input
+        z = Variable(FloatTensor(np.random.normal(0, 1, (batch_size, opt.latent_dim))))
+        gen_labels = Variable(LongTensor(np.random.randint(0, opt.n_classes, batch_size)))
 
         # Generate a batch of images
-        gen_imgs = generator(z)
+        gen_imgs = generator(z, gen_labels)
 
         # Loss measures generator's ability to fool the discriminator
-        g_loss = adversarial_loss(discriminator(gen_imgs), valid)
+        validity = discriminator(gen_imgs, gen_labels)
+        g_loss = adversarial_loss(validity, valid)
 
         g_loss.backward()
         optimizer_G.step()
@@ -155,10 +185,16 @@ for epoch in range(opt.n_epochs):
 
         optimizer_D.zero_grad()
 
-        # Measure discriminator's ability to classify real from generated samples
-        real_loss = adversarial_loss(discriminator(real_imgs), valid)
-        fake_loss = adversarial_loss(discriminator(gen_imgs.detach()), fake)
-        d_loss = (real_loss + fake_loss) / 2
+        # Loss for real images
+        validity_real = discriminator(real_imgs, labels)
+        d_real_loss = adversarial_loss(validity_real, valid)
+
+        # Loss for fake images
+        validity_fake = discriminator(gen_imgs.detach(), gen_labels)
+        d_fake_loss = adversarial_loss(validity_fake, fake)
+
+        # Total discriminator loss
+        d_loss = (d_real_loss + d_fake_loss) / 2
 
         d_loss.backward()
         optimizer_D.step()
@@ -173,8 +209,8 @@ for epoch in range(opt.n_epochs):
 
         batches_done = epoch * len(dataloader) + i
         if batches_done % opt.sample_interval == 0:
-            save_image(gen_imgs.data[:25], f"{DIR_PATH}/{batches_done}.jpg", nrow=5, normalize=True)
-    
+            sample_image(n_row=10, batches_done=batches_done)
+
     g_losses_per_epoch.append(np.mean(g_losses))
     d_losses_per_epoch.append(np.mean(d_losses))
 
