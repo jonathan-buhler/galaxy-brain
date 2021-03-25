@@ -48,11 +48,10 @@ class G10(Dataset):
         self.transform = transforms.Compose(
             [
                 transforms.Resize((img_size, img_size)),
-                # transforms.RandomHorizontalFlip(p),
-                # transforms.RandomApply([transforms.RandomAffine(90, (0.4, 0.4))], p),
-                # transforms.RandomErasing(p, (0.1, 0.6)),
-                # transforms.Normalize(self.mean, self.std),
-                # transforms.Grayscale(),
+                transforms.RandomHorizontalFlip(p),
+                transforms.RandomApply([transforms.RandomAffine(90, (0.4, 0.4))], p),
+                transforms.RandomErasing(p, (0.1, 0.6)),
+                transforms.Normalize(self.mean, self.std),
             ]
         )
 
@@ -64,16 +63,3 @@ class G10(Dataset):
 
     def __len__(self):
         return len(self.images)
-
-images = []
-dataset = G10(img_size=64, use_labels=True)
-for c in range(10):
-    for (image, label) in dataset:
-        if images and len(images) >= c * 10:
-            print(len(images))
-            break
-        elif label.item() == c:
-            images.append(image)
-
-from torchvision.utils import save_image
-save_image(images, "./src2_lol/image_classes-n.jpg", nrow=10, normalize=True)
